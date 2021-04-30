@@ -3,7 +3,7 @@
  *******************  CANADIAN ASTRONOMY DATA CENTRE  *******************
  **************  CENTRE CANADIEN DE DONNÉES ASTRONOMIQUES  **************
  *
- *  (c) 2019.                            (c) 2019.
+ *  (c) 2021.                            (c) 2021.
  *  Government of Canada                 Gouvernement du Canada
  *  National Research Council            Conseil national de recherches
  *  Ottawa, Canada, K1A 0R6              Ottawa, Canada, K1A 0R6
@@ -62,61 +62,105 @@
  *  <http://www.gnu.org/licenses/>.      pas le cas, consultez :
  *                                       <http://www.gnu.org/licenses/>.
  *
+ *
  ************************************************************************
  */
 
-package org.opencadc.soda.server;
+package org.opencadc.fits.slice;
 
-import ca.nrc.cadc.dali.Interval;
-import ca.nrc.cadc.dali.Shape;
+import ca.nrc.cadc.wcs.exceptions.WCSLibRuntimeException;
+import nom.tam.fits.Header;
+import nom.tam.fits.HeaderCardException;
+import nom.tam.fits.header.Standard;
+import org.apache.log4j.Logger;
+import org.opencadc.soda.ExtensionSlice;
+import org.opencadc.soda.PixelRange;
 
+import java.util.Arrays;
 import java.util.List;
 
-import org.opencadc.soda.ExtensionSlice;
+public class PixelCutout extends FITSCutout<ExtensionSlice> {
+    private static final Logger LOGGER = Logger.getLogger(PixelCutout.class);
 
+    public PixelCutout(final Header header) throws HeaderCardException {
+        super(header);
+    }
 
-/**
- * Wrapper that holds all input for a cutout operation.
- *
- * @author pdowler
- */
-public class Cutout {
 
     /**
-     * Position axis cutout.
+     * Obtain the bounds of the given cutout.
+     *
+     * @param cutoutBound The bounds (shape, interval etc.) of the cutout.
+     * @return long[] array of overlapping bounds, or long[0] if all pixels are included.
+     * @throws WCSLibRuntimeException WCSLib (C) error.
      */
-    public Shape pos;
+    @Override
+    public long[] getBounds(final ExtensionSlice cutoutBound) throws WCSLibRuntimeException {
 
-    /**
-     * Energy axis cutout.
-     */
-    public Interval band;
+        // Entire extension requested.
+        if (cutoutBound.getPixelRanges().isEmpty()) {
+            return new long[0];
+        } else {
 
-    /**
-     * Time axis cutout.
-     */
-    public Interval time;
+            // The HDU matches a requested one, now check if pixels overlap
+            final int naxis = this.fitsHeaderWCSKeywords.getIntValue(Standard.NAXIS.key());
 
-    /**
-     * Polarization axis cutout(s).
-     */
-    public List<String> pol;
+            final List<PixelRange> pixelRanges = cutoutBound.getPixelRanges();
+            long[] pixelCutoutBounds = new long[0];
+            for (int i = 0; i < naxis; i++) {
+                final int axisKey = i + 1;
+                final int maxUpperBound = this.fitsHeaderWCSKeywords.getIntValue(Standard.NAXISn.n(axisKey).key());
 
-    /**
-     * Custom axis to cutout.
-     */
-    public String customAxis;
+                // TODO: this does not take into account flipped axis (upperBound < lowerBound
+                // so upperbound is really the smallest pixel index)
+                if (i < pixelRanges.size()) {
+                    final int lowBound = pixelRanges.get(i).lowerBound;
+                    final int hiBound = pixelRanges.get(i).upperBound;
+                    if (lowBound < maxUpperBound) {
+                        final long[] overlap = clip(axisKey, lowBound, Math.min(maxUpperBound, hiBound));
+                        if (overlap != null) {
+                            final int oldLength = pixelCutoutBounds.length;
+                            final int newLength = oldLength + overlap.length;
+                            pixelCutoutBounds = Arrays.copyOf(pixelCutoutBounds, newLength);
+                            System.arraycopy(overlap, 0, pixelCutoutBounds, oldLength, overlap.length);
+                        }
+                    }
+                }
+            }
 
-    /**
-     * Custom axis cutout.
-     */
-    public Interval custom;
+            return pixelCutoutBounds.length == 0 ? null : pixelCutoutBounds;
+        }
+    }
 
-    /**
-     * Pixel cutout(s).
-     */
-    public List<ExtensionSlice> pixelCutouts;
+    private long[] clip(final int axis, final long lower, final long upper) {
+        final long len = this.fitsHeaderWCSKeywords.getIntValue(Standard.NAXISn.n(axis).key());
 
-    public Cutout() {
+        long x1 = lower;
+        long x2 = upper;
+
+        if (x1 < 1) {
+            x1 = 1;
+        }
+
+        if (x2 > len) {
+            x2 = len;
+        }
+
+        LOGGER.debug("clip: " + len + " (" + x1 + ":" + x2 + ")");
+
+        // all pixels includes
+        if (x1 == 1 && x2 == len) {
+            LOGGER.warn("clip: all");
+            return new long[0];
+        }
+
+        // no pixels included
+        if (x1 > len || x2 < 1) {
+            LOGGER.warn("clip: none");
+            return null;
+        }
+
+        // an actual cutout
+        return new long[]{x1, x2};
     }
 }

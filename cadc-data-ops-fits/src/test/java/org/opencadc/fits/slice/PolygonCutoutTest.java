@@ -3,7 +3,7 @@
  *******************  CANADIAN ASTRONOMY DATA CENTRE  *******************
  **************  CENTRE CANADIEN DE DONNÉES ASTRONOMIQUES  **************
  *
- *  (c) 2019.                            (c) 2019.
+ *  (c) 2021.                            (c) 2021.
  *  Government of Canada                 Gouvernement du Canada
  *  National Research Council            Conseil national de recherches
  *  Ottawa, Canada, K1A 0R6              Ottawa, Canada, K1A 0R6
@@ -62,61 +62,62 @@
  *  <http://www.gnu.org/licenses/>.      pas le cas, consultez :
  *                                       <http://www.gnu.org/licenses/>.
  *
+ *
  ************************************************************************
  */
 
-package org.opencadc.soda.server;
+package org.opencadc.fits.slice;
 
-import ca.nrc.cadc.dali.Interval;
-import ca.nrc.cadc.dali.Shape;
+import ca.nrc.cadc.dali.Point;
+import ca.nrc.cadc.dali.Polygon;
+import ca.nrc.cadc.util.Log4jInit;
+import nom.tam.fits.Fits;
+import nom.tam.fits.Header;
+import nom.tam.util.RandomAccessDataObject;
+import nom.tam.util.RandomAccessFileExt;
+import org.apache.log4j.Level;
+import org.apache.log4j.Logger;
+import org.junit.Test;
 
-import java.util.List;
+import java.io.File;
 
-import org.opencadc.soda.ExtensionSlice;
+public class PolygonCutoutTest extends BaseCutoutTest {
+    private static final Logger LOGGER = Logger.getLogger(PolygonCutoutTest.class);
 
+    static {
+        Log4jInit.setLevel("org.opencadc.fits.slice", Level.DEBUG);
+    }
 
-/**
- * Wrapper that holds all input for a cutout operation.
- *
- * @author pdowler
- */
-public class Cutout {
+    @Test
+    public void testMegapipeCutout() throws Exception {
+        final long startMillis = System.currentTimeMillis();
+        final String testFileName = "test-megapipe.fits";
+        final File testFile = new File(DEFAULT_DATA_DIR, testFileName);
 
-    /**
-     * Position axis cutout.
-     */
-    public Shape pos;
+        if (testFile.exists()) {
+            try (final RandomAccessDataObject randomAccessDataObject = new RandomAccessFileExt(testFile, "r");
+                 final Fits fits = new Fits(randomAccessDataObject)) {
 
-    /**
-     * Energy axis cutout.
-     */
-    public Interval band;
+                final Header header = fits.readHDU().getHeader();
+                final PolygonCutout polygonCutout = new PolygonCutout(header);
 
-    /**
-     * Time axis cutout.
-     */
-    public Interval time;
+                final Polygon polygon = new Polygon();
 
-    /**
-     * Polarization axis cutout(s).
-     */
-    public List<String> pol;
+                polygon.getVertices().add(new Point(51.291219363105000D, -21.737249735369637D));
+                polygon.getVertices().add(new Point(51.291193816346876D, -21.721717813306441D));
+                polygon.getVertices().add(new Point(51.307912919582414D, -21.721693011490995D));
+                polygon.getVertices().add(new Point(51.307940254544761D, -21.737224914051101D));
 
-    /**
-     * Custom axis to cutout.
-     */
-    public String customAxis;
-
-    /**
-     * Custom axis cutout.
-     */
-    public Interval custom;
-
-    /**
-     * Pixel cutout(s).
-     */
-    public List<ExtensionSlice> pixelCutouts;
-
-    public Cutout() {
+                final long[] result = polygonCutout.getBounds(polygon);
+                final long[] expected = new long[]{400, 700, 400, 700};
+                assertFuzzyPixelArrayEquals("Wrong bounds.", expected, result);
+            }
+        } else {
+            LOGGER.warn("The " + testFile.getAbsolutePath() + " file is missing.  It can be "
+                        + "downloaded from "
+                        + "https://www.cadc-ccda.hia-iha.nrc-cnrc.gc.ca/files/vault/CADC/test-data/cutouts and placed"
+                        + "into " + DEFAULT_DATA_DIR);
+        }
+        LOGGER.debug("Util.testALMACubeCutout OK: " + (System.currentTimeMillis() - startMillis) + " ms");
     }
 }

@@ -3,7 +3,7 @@
  *******************  CANADIAN ASTRONOMY DATA CENTRE  *******************
  **************  CENTRE CANADIEN DE DONNÉES ASTRONOMIQUES  **************
  *
- *  (c) 2019.                            (c) 2019.
+ *  (c) 2021.                            (c) 2021.
  *  Government of Canada                 Gouvernement du Canada
  *  National Research Council            Conseil national de recherches
  *  Ottawa, Canada, K1A 0R6              Ottawa, Canada, K1A 0R6
@@ -62,61 +62,99 @@
  *  <http://www.gnu.org/licenses/>.      pas le cas, consultez :
  *                                       <http://www.gnu.org/licenses/>.
  *
+ *
  ************************************************************************
  */
 
-package org.opencadc.soda.server;
+package org.opencadc.fits.slice;
 
-import ca.nrc.cadc.dali.Interval;
-import ca.nrc.cadc.dali.Shape;
+import ca.nrc.cadc.dali.Circle;
+import ca.nrc.cadc.dali.Point;
+import ca.nrc.cadc.dali.Polygon;
+import ca.nrc.cadc.wcs.exceptions.NoSuchKeywordException;
+import ca.nrc.cadc.wcs.exceptions.WCSLibRuntimeException;
+import nom.tam.fits.Header;
+import nom.tam.fits.HeaderCardException;
 
-import java.util.List;
 
-import org.opencadc.soda.ExtensionSlice;
+public class CircleCutout extends ShapeCutout<Circle> {
 
+    public CircleCutout(final Header header) throws HeaderCardException {
+        super(header);
+    }
 
-/**
- * Wrapper that holds all input for a cutout operation.
- *
- * @author pdowler
- */
-public class Cutout {
-
-    /**
-     * Position axis cutout.
-     */
-    public Shape pos;
 
     /**
-     * Energy axis cutout.
+     * Obtain the bounds of the given cutout.
+     *
+     * @param cutoutBound The bounds (shape, interval etc.) of the cutout.
+     * @return long[] array of overlapping bounds, or long[0] if all pixels are included.
+     * @throws NoSuchKeywordException Unknown keyword found.
+     * @throws WCSLibRuntimeException WCSLib (C) error.
+     * @throws HeaderCardException    If a FITS Header card couldn't be read.
      */
-    public Interval band;
+    @Override
+    public long[] getBounds(final Circle cutoutBound) throws NoSuchKeywordException, WCSLibRuntimeException,
+                                                             HeaderCardException {
+        return getPositionBounds(cutoutBound);
+    }
 
     /**
-     * Time axis cutout.
+     * Find the pixel bounds that enclose the specified circle.
+     *
+     * @param circle circle with center in ICRS coordinates
+     * @return int[4] holding [x1, x2, y1, y2], int[0] if all pixels are included,
+     *      or null if the circle does not intersect the WCS
+     * @throws NoSuchKeywordException Unknown keyword found.
+     * @throws WCSLibRuntimeException WCSLib (C) error.
      */
-    public Interval time;
+    private long[] getPositionBounds(final Circle circle)
+            throws NoSuchKeywordException, WCSLibRuntimeException, HeaderCardException {
+        final double x = circle.getCenter().getLongitude();
+        final double y = circle.getCenter().getLatitude();
+        final double radius = circle.getRadius();
+        final double dx = Math.abs(radius / Math.cos(Math.toRadians(y)));
+
+        final Polygon boundingBox = new Polygon();
+        boundingBox.getVertices().add(rangeReduce(x - dx, y - radius));
+        boundingBox.getVertices().add(rangeReduce(x + dx, y - radius));
+        boundingBox.getVertices().add(rangeReduce(x + dx, y + radius));
+        boundingBox.getVertices().add(rangeReduce(x - dx, y + radius));
+
+        final PolygonCutout polygonCutout = new PolygonCutout(this.fitsHeaderWCSKeywords.getHeader());
+        return polygonCutout.getBounds(boundingBox);
+    }
 
     /**
-     * Polarization axis cutout(s).
+     * Modify argument vertex so that coordinates are in [0,360] and [-90,90].
+     *
+     * @param longitude The longitude to check
+     * @param latitude  The latitude to check
+     * @return the same vertex for convenience
+     *
      */
-    public List<String> pol;
+    private Point rangeReduce(final double longitude, final double latitude) {
+        double retLongitude = longitude;
+        double retLatitude = latitude;
 
-    /**
-     * Custom axis to cutout.
-     */
-    public String customAxis;
+        if (retLatitude > 90.0) {
+            retLongitude += 180.0;
+            retLatitude = 180.0 - retLatitude;
+        }
 
-    /**
-     * Custom axis cutout.
-     */
-    public Interval custom;
+        if (retLatitude < -90.0) {
+            retLongitude += 180.0;
+            retLatitude = -180.0 - retLatitude;
+        }
 
-    /**
-     * Pixel cutout(s).
-     */
-    public List<ExtensionSlice> pixelCutouts;
+        if (retLongitude < 0) {
+            retLongitude += 360.0;
+        }
 
-    public Cutout() {
+        if (retLongitude > 360.0) {
+            retLongitude -= 360.0;
+        }
+
+        return new Point(retLongitude, retLatitude);
     }
 }

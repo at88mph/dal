@@ -72,6 +72,8 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.List;
+
+import ca.nrc.cadc.wcs.exceptions.NoSuchKeywordException;
 import nom.tam.fits.BasicHDU;
 import nom.tam.fits.Fits;
 import nom.tam.fits.FitsException;
@@ -79,7 +81,7 @@ import nom.tam.fits.Header;
 import nom.tam.util.RandomAccessDataObject;
 import org.apache.log4j.Logger;
 import org.opencadc.fits.slice.NDimensionalSlicer;
-import org.opencadc.soda.ExtensionSlice;
+import org.opencadc.soda.server.Cutout;
 
 /**
  * Operation on FITS files.
@@ -132,18 +134,20 @@ public class FitsOperations {
     /**
      * Implement prototype SODA pixel cutout action.
      *
-     * @param slices subsets of data to extract
+     * @param cutout cutout spec
      * @param outputStream  The Stream to write out to.
      * @throws ReadException    Any errors to report back to the caller.
      */
-    public void cutoutToStream(final List<ExtensionSlice> slices, final OutputStream outputStream) throws ReadException {
+    public void cutoutToStream(final Cutout cutout, final OutputStream outputStream) throws ReadException {
+        log.debug("cutoutToStream() start.");
         try {
             final NDimensionalSlicer slicer = new NDimensionalSlicer();
-            slicer.slice(src, slices, outputStream);
-        } catch (FitsException ex) {
+            slicer.slice(src, cutout, outputStream);
+        } catch (FitsException | NoSuchKeywordException ex) {
             throw new ReadException("invalid fits data: " + src + " reason: " + ex.getMessage(), ex);
         } catch (IOException ex) {
             throw new ReadException("failed to read " + src + " reason: " + ex.getMessage(), ex);
         }
+        log.debug("cutoutToStream() OK.");
     }
 }

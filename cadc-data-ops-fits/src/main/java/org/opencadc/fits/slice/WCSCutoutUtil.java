@@ -3,7 +3,7 @@
  *******************  CANADIAN ASTRONOMY DATA CENTRE  *******************
  **************  CENTRE CANADIEN DE DONNÉES ASTRONOMIQUES  **************
  *
- *  (c) 2019.                            (c) 2019.
+ *  (c) 2021.                            (c) 2021.
  *  Government of Canada                 Gouvernement du Canada
  *  National Research Council            Conseil national de recherches
  *  Ottawa, Canada, K1A 0R6              Ottawa, Canada, K1A 0R6
@@ -62,61 +62,54 @@
  *  <http://www.gnu.org/licenses/>.      pas le cas, consultez :
  *                                       <http://www.gnu.org/licenses/>.
  *
+ *
  ************************************************************************
  */
 
-package org.opencadc.soda.server;
+package org.opencadc.fits.slice;
 
+import ca.nrc.cadc.dali.Circle;
 import ca.nrc.cadc.dali.Interval;
+import ca.nrc.cadc.dali.Polygon;
 import ca.nrc.cadc.dali.Shape;
+import ca.nrc.cadc.wcs.exceptions.NoSuchKeywordException;
+import nom.tam.fits.Header;
+import nom.tam.fits.HeaderCardException;
+import org.opencadc.soda.server.Cutout;
 
 import java.util.List;
 
-import org.opencadc.soda.ExtensionSlice;
 
+public class WCSCutoutUtil {
+    public static long[] getBounds(final Header header, final Cutout cutout)
+            throws HeaderCardException, NoSuchKeywordException {
+        if (cutout.pos != null) {
+            return WCSCutoutUtil.getSpatialBounds(header, cutout.pos);
+        } else {
+            return null;
+        }
+    }
 
-/**
- * Wrapper that holds all input for a cutout operation.
- *
- * @author pdowler
- */
-public class Cutout {
+    static long[] getSpatialBounds(final Header header, final Shape shape)
+            throws HeaderCardException, NoSuchKeywordException {
+        if (shape instanceof Circle) {
+            return new CircleCutout(header).getBounds((Circle) shape);
+        } else if (shape instanceof Polygon) {
+            return new PolygonCutout(header).getBounds((Polygon) shape);
+        } else {
+            return null;
+        }
+    }
 
-    /**
-     * Position axis cutout.
-     */
-    public Shape pos;
+    static long[] getSpectralBounds(final Header header, final Interval<Number> spectralInterval) {
+        return null;
+    }
 
-    /**
-     * Energy axis cutout.
-     */
-    public Interval band;
+    static long[] getTemporalBounds(final Header header, final Interval<Number> temporalInterval) {
+        return null;
+    }
 
-    /**
-     * Time axis cutout.
-     */
-    public Interval time;
-
-    /**
-     * Polarization axis cutout(s).
-     */
-    public List<String> pol;
-
-    /**
-     * Custom axis to cutout.
-     */
-    public String customAxis;
-
-    /**
-     * Custom axis cutout.
-     */
-    public Interval custom;
-
-    /**
-     * Pixel cutout(s).
-     */
-    public List<ExtensionSlice> pixelCutouts;
-
-    public Cutout() {
+    static long[] getPolarizationBounds(final Header header, final List<String> polarizationStates) {
+        return null;
     }
 }
