@@ -104,7 +104,6 @@ public abstract class ShapeCutout<T extends Shape> extends FITSCutout<T> {
 
             ret = new CoordSys();
             ret.name = fitsHeaderWCSKeywords.getStringValue(Standard.RADESYS.key());
-            ret.supported = false;
 
             if (CoordSys.GAPPT.equals(ret.name)) {
                 ret.timeDependent = Boolean.TRUE;
@@ -153,9 +152,8 @@ public abstract class ShapeCutout<T extends Shape> extends FITSCutout<T> {
                 if (ctype1.startsWith("DEC")) {
                     ret.swappedAxes = true;
                 }
-                if (ret.name != null) {
-                    ret.supported = true;
-                }
+
+                ret.supported = ret.name != null;
             }
         }
 

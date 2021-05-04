@@ -217,8 +217,6 @@ public class PolygonCutout extends ShapeCutout<Polygon> {
         final long iy1 = (long) Math.floor(y1 + buffer);
         final long iy2 = (long) Math.ceil(y2 - buffer);
 
-        LOGGER.debug("Rounded from [" + Arrays.toString(new double[]{x1, x2, y1, y2}) + "]");
-
         // clipping
         LOGGER.debug("Clipping box " + Arrays.toString(new long[]{ix1, ix2, iy1, iy2}) + " into "
                      + Arrays.toString(new long[]{naxis1, naxis2}));

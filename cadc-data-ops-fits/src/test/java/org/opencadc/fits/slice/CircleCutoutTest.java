@@ -70,6 +70,7 @@ package org.opencadc.fits.slice;
 
 import ca.nrc.cadc.dali.Circle;
 import ca.nrc.cadc.dali.Point;
+import ca.nrc.cadc.dali.Polygon;
 import ca.nrc.cadc.util.FileUtil;
 import ca.nrc.cadc.util.Log4jInit;
 import nom.tam.fits.BasicHDU;

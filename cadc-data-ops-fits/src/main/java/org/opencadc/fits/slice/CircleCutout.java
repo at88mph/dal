@@ -75,12 +75,25 @@ import ca.nrc.cadc.wcs.exceptions.NoSuchKeywordException;
 import ca.nrc.cadc.wcs.exceptions.WCSLibRuntimeException;
 import nom.tam.fits.Header;
 import nom.tam.fits.HeaderCardException;
+import nom.tam.fits.header.Standard;
+import org.apache.log4j.Logger;
+
+import java.util.Arrays;
 
 
 public class CircleCutout extends ShapeCutout<Circle> {
+    private static final Logger LOGGER = Logger.getLogger(CircleCutout.class);
 
     public CircleCutout(final Header header) throws HeaderCardException {
         super(header);
+        if (LOGGER.isDebugEnabled()) {
+            final int axes = header.getIntValue(Standard.NAXIS);
+            final int[] axisValues = new int[axes];
+            for (int i = 1; i <= axes; i++) {
+                axisValues[i - 1] = header.getIntValue(Standard.NAXISn.n(i));
+            }
+            LOGGER.debug("New circle cutout for axes " + Arrays.toString(axisValues));
+        }
     }
 
 
@@ -110,19 +123,29 @@ public class CircleCutout extends ShapeCutout<Circle> {
      */
     private long[] getPositionBounds(final Circle circle)
             throws NoSuchKeywordException, WCSLibRuntimeException, HeaderCardException {
+        final Polygon boundingBox = getBoundingBox(circle);
+        final PolygonCutout polygonCutout = new PolygonCutout(this.fitsHeaderWCSKeywords.getHeader());
+        return polygonCutout.getBounds(boundingBox);
+    }
+
+    private Polygon getBoundingBox(final Circle circle) {
         final double x = circle.getCenter().getLongitude();
         final double y = circle.getCenter().getLatitude();
         final double radius = circle.getRadius();
         final double dx = Math.abs(radius / Math.cos(Math.toRadians(y)));
 
-        final Polygon boundingBox = new Polygon();
-        boundingBox.getVertices().add(rangeReduce(x - dx, y - radius));
-        boundingBox.getVertices().add(rangeReduce(x + dx, y - radius));
-        boundingBox.getVertices().add(rangeReduce(x + dx, y + radius));
-        boundingBox.getVertices().add(rangeReduce(x - dx, y + radius));
+        final double xMin = x - dx;
+        final double xMax = x + dx;
+        final double yMin = y - radius;
+        final double yMax = y + radius;
 
-        final PolygonCutout polygonCutout = new PolygonCutout(this.fitsHeaderWCSKeywords.getHeader());
-        return polygonCutout.getBounds(boundingBox);
+        final Polygon boundingBox = new Polygon();
+        boundingBox.getVertices().add(rangeReduce(xMin, yMin));
+        boundingBox.getVertices().add(rangeReduce(xMax, yMin));
+        boundingBox.getVertices().add(rangeReduce(xMax, yMax));
+        boundingBox.getVertices().add(rangeReduce(xMin, yMax));
+
+        return boundingBox;
     }
 
     /**
