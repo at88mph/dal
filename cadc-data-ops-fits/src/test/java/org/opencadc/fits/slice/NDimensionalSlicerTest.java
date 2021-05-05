@@ -84,6 +84,7 @@ import java.util.List;
 
 import nom.tam.fits.BasicHDU;
 import nom.tam.fits.Fits;
+import nom.tam.fits.ImageHDU;
 import nom.tam.util.RandomAccessDataObject;
 import nom.tam.util.RandomAccessFileExt;
 import org.apache.log4j.Level;
@@ -352,22 +353,28 @@ public class NDimensionalSlicerTest {
                                                        NDimensionalSlicerTest.class);
         final String configuredTestWriteDir = System.getenv("TEST_WRITE_DIR");
         final String testWriteDir = configuredTestWriteDir == null ? "/tmp" : configuredTestWriteDir;
-        final File expectedFile = FileUtil.getFileFromResource("test-blast-wcs-circle-cutout.fits",
-                                                               NDimensionalSlicerTest.class);
         final Path outputPath = Files.createTempFile(new File(testWriteDir).toPath(),
                                                      "test-blast-wcs-circle-cutout", ".fits");
         LOGGER.debug("Writing out to " + outputPath);
 
         try (final RandomAccessDataObject randomAccessDataObject = new RandomAccessFileExt(file, "r");
-             final OutputStream hstFileCutoutStream = new FileOutputStream(outputPath.toFile())) {
-            slicer.slice(randomAccessDataObject, cutout, hstFileCutoutStream);
-            hstFileCutoutStream.flush();
+             final OutputStream fileOutputStream = new FileOutputStream(outputPath.toFile())) {
+            slicer.slice(randomAccessDataObject, cutout, fileOutputStream);
+            fileOutputStream.flush();
         }
 
-        final Fits expectedFits = new Fits(expectedFile);
         final Fits resultFits = new Fits(outputPath.toFile());
+        resultFits.read();
 
-        FitsTest.assertFitsEqual(expectedFits, resultFits);
+        Assert.assertEquals("Should have two HDUs", 2, resultFits.getNumberOfHDUs());
+
+        final ImageHDU firstImageHDU = (ImageHDU) resultFits.getHDU(0);
+        Assert.assertArrayEquals("First HDU has incorrect axes.", new int[]{140, 118},
+                                 firstImageHDU.getAxes());
+        final ImageHDU secondImageHDU = (ImageHDU) resultFits.getHDU(0);
+        Assert.assertArrayEquals("Second HDU has incorrect axes.", new int[]{140, 118},
+                                 secondImageHDU.getAxes());
+
         Files.deleteIfExists(outputPath);
     }
 }
