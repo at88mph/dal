@@ -66,75 +66,91 @@
  ************************************************************************
  */
 
-package org.opencadc.fits;
+package org.opencadc.fits.slice;
 
-import nom.tam.fits.header.FitsHeaderImpl;
-import nom.tam.fits.header.IFitsHeader;
+import ca.nrc.cadc.util.ArrayUtil;
 
-/**
- * Extension to the standard set of FITS headers.
- */
-public enum CADCExt implements IFitsHeader {
+import org.apache.log4j.Logger;
 
-    CDELT(HDU.IMAGE, VALUE.REAL, "Coord value at incr deg/pixel origin on line axis"),
-    CDELTn(HDU.IMAGE, VALUE.REAL, "Coord value at incr deg/pixel origin on line axis"),
-    CUNITn(HDU.IMAGE, VALUE.STRING, "Units for axis"),
-    LBOUNDn(HDU.IMAGE, VALUE.INTEGER, "Pixel origin along axis"),
-    OBSFREQ(HDU.IMAGE, VALUE.REAL, "Same as RESTFRQ"),
-    PC1_1(HDU.IMAGE, VALUE.REAL, ""),
-    PC01_01(HDU.IMAGE, VALUE.REAL, ""),
-    PC1_2(HDU.IMAGE, VALUE.REAL, ""),
-    PC2_1(HDU.IMAGE, VALUE.REAL, ""),
-    PC2_2(HDU.IMAGE, VALUE.REAL, ""),
-    RESTFRQ(HDU.IMAGE, VALUE.REAL, ""),
+
+public class EnergyConverter {
+    private static final Logger LOGGER = Logger.getLogger(EnergyConverter.class);
+
+    private static final String[] FREQ_UNITS = new String[] {"Hz", "kHz", "MHz", "GHz" };
+    private static final double[] FREQ_MULT = new double[] {1.0, 1.0e3, 1.0e6, 1.0e9 };
+
+    private static final String[] EN_UNITS = new String[] {"eV", "keV", "MeV", "GeV" };
+    private static final double[] EN_MULT = new double[] {1.0, 1.0e3, 1.0e6, 1.0e9 };
+
+    private static final String[] WAVE_UNITS = new String[] {"m", "cm", "mm",
+                                                             "um", "µm", "nm",
+                                                             "Angstrom", "A" }; // A  deprecated
+    private static final double[] WAVE_MULT = new double[] {1.0, 1.0e-2, 1.0e-3,
+                                                            1.0e-6, 1.0e-6, 1.0e-9,
+                                                            1.0e-10, 1.0e-10,};
+
+    protected static final double c = 299792458.0D; // m/sec - Speed of light in a vacuum
+    protected static final double h = 6.62607015e-34; // J/sec - Planck constant
 
     /**
-     * Use RESTFRQ
+     * Convert from known metres (user input) to the given unit.
+     * @param metres    Value to convert in metres (wavelength).
+     * @param cunit     The unit to convert to.
+     * @return          Converted value.
+     *
+     * @throws IllegalArgumentException For unknown or unusable unit value.
      */
-    @Deprecated
-    RESTFREQ(HDU.IMAGE, VALUE.REAL, ""),
+    public double fromMetres(final double metres, final String cunit) {
+        final boolean inverse;
+        final String unit;
 
-    RESTWAV(HDU.IMAGE, VALUE.REAL, ""),
-    SPECSYS(HDU.IMAGE, VALUE.STRING, "");
+        LOGGER.debug("Converting from metres (" + metres + ") to " + cunit);
 
-    private final IFitsHeader key;
+        // 1 / the provided unit.
+        if (cunit.startsWith("/")) {
+            inverse = true;
+            unit = cunit.substring(1);
+        } else if (!cunit.contains(" ") && cunit.endsWith("-1")) {
+            inverse = true;
+            unit = cunit.substring(0, cunit.indexOf("-1"));
+        } else {
+            inverse = false;
+            unit = cunit;
+        }
 
-    CADCExt(IFitsHeader.HDU hdu, IFitsHeader.VALUE valueType, String comment) {
-        this.key = new FitsHeaderImpl(name(), IFitsHeader.SOURCE.NOAO, hdu, valueType, comment);
+        int i = ArrayUtil.matches("^" + unit + "$", FREQ_UNITS, true);
+        if (i != -1) {
+            final double result = metresToFreq(metres, i);
+            return inverse ? 1.0D / result : result;
+        }
+
+        i = ArrayUtil.matches("^" + unit + "$", EN_UNITS, true);
+        if (i != -1) {
+            final double result = metresToEnergy(metres, i);
+            return inverse ? 1.0D / result : result;
+        }
+
+        i = ArrayUtil.matches("^" + unit + "$", WAVE_UNITS, true);
+        if (i != -1) {
+            final double result = metresToWavelength(metres, i);
+            LOGGER.debug("Wavelength " + result);
+            final double conversionResult = inverse ? 1.0D / result : result;
+            LOGGER.debug("Wavelength conversion " + conversionResult);
+            return conversionResult;
+        }
+
+        throw new IllegalArgumentException("Unknown units: " + unit);
     }
 
-    CADCExt(String key, IFitsHeader.HDU hdu, IFitsHeader.VALUE valueType, String comment) {
-        this.key = new FitsHeaderImpl(name(), IFitsHeader.SOURCE.NOAO, hdu, valueType, comment);
+    private double metresToFreq(final double metres, final int factorIndex) {
+        return (c / metres) / FREQ_MULT[factorIndex];
     }
 
-    @Override
-    public String comment() {
-        return this.key.comment();
+    private double metresToEnergy(final double metres, final int factorIndex) {
+        return ((c * h) / metres) / EN_MULT[factorIndex];
     }
 
-    @Override
-    public IFitsHeader.HDU hdu() {
-        return this.key.hdu();
-    }
-
-    @Override
-    public String key() {
-        return this.key.key();
-    }
-
-    @Override
-    public IFitsHeader n(int... number) {
-        return this.key.n(number);
-    }
-
-    @Override
-    public IFitsHeader.SOURCE status() {
-        return this.key.status();
-    }
-
-    @Override
-    @SuppressWarnings("CPD-END")
-    public IFitsHeader.VALUE valueType() {
-        return this.key.valueType();
+    private double metresToWavelength(double metres, int factorIndex) {
+        return metres / WAVE_MULT[factorIndex];
     }
 }

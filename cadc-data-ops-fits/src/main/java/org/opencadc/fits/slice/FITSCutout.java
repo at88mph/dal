@@ -79,6 +79,7 @@ public abstract class FITSCutout<T> {
 
     public FITSCutout(final Header header) throws HeaderCardException {
         DaliUtil.assertNotNull("header", header);
+        postProcess(header);
         this.fitsHeaderWCSKeywords = new FITSHeaderWCSKeywords(header);
     }
 
@@ -87,6 +88,15 @@ public abstract class FITSCutout<T> {
         this.fitsHeaderWCSKeywords = fitsHeaderWCSKeywords;
     }
 
+    /**
+     * Implementors can override this to further process the Header to accommodate different cutout types.  Leave empty
+     * if no further processing needs to be done.
+     * @param header    The Header to modify.
+     * @throws HeaderCardException  if modification fails.
+     */
+    protected void postProcess(final Header header) throws HeaderCardException {
+
+    }
 
     /**
      * Obtain the bounds of the given cutout.

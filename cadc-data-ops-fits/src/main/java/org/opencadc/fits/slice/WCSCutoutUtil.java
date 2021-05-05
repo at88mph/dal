@@ -85,6 +85,8 @@ public class WCSCutoutUtil {
             throws HeaderCardException, NoSuchKeywordException {
         if (cutout.pos != null) {
             return WCSCutoutUtil.getSpatialBounds(header, cutout.pos);
+        } else if (cutout.band != null) {
+            return WCSCutoutUtil.getSpectralBounds(header, cutout.band);
         } else {
             return null;
         }
@@ -101,8 +103,9 @@ public class WCSCutoutUtil {
         }
     }
 
-    static long[] getSpectralBounds(final Header header, final Interval<Number> spectralInterval) {
-        return null;
+    static long[] getSpectralBounds(final Header header, final Interval<Number> spectralInterval)
+            throws HeaderCardException, NoSuchKeywordException {
+        return new EnergyCutout(header).getBounds(spectralInterval);
     }
 
     static long[] getTemporalBounds(final Header header, final Interval<Number> temporalInterval) {
