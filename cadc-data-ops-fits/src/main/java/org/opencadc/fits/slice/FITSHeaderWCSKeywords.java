@@ -498,10 +498,10 @@ public class FITSHeaderWCSKeywords implements WCSKeywords {
      *
      * @return integer axis, or -1 if not found.
      */
-    int getSpectralAxis(final Header destination) {
-        final int naxis = destination.getIntValue(Standard.NAXIS);
+    int getSpectralAxis(final Header h) {
+        final int naxis = h.getIntValue(Standard.NAXIS);
         for (int i = 1; i <= naxis; i++) {
-            final String ctypeValue = destination.getStringValue(Standard.CTYPEn.n(i));
+            final String ctypeValue = h.getStringValue(Standard.CTYPEn.n(i));
             if (ctypeValue != null && Arrays.stream(CoordTypeCode.values()).anyMatch(
                 coOrdTypeCode -> ctypeValue.startsWith(coOrdTypeCode.name()) && coOrdTypeCode.isSpectral())) {
                 return i;
@@ -515,14 +515,30 @@ public class FITSHeaderWCSKeywords implements WCSKeywords {
         return getTemporalAxis(this.header);
     }
 
-    int getTemporalAxis(final Header destination) {
-        final int naxis = destination.getIntValue(Standard.NAXIS);
+    int getTemporalAxis(final Header h) {
+        final int naxis = h.getIntValue(Standard.NAXIS);
         for (int i = 1; i <= naxis; i++) {
-            final String ctypeValue = destination.getStringValue(Standard.CTYPEn.n(i));
+            final String ctypeValue = h.getStringValue(Standard.CTYPEn.n(i));
             if (ctypeValue != null && Arrays.stream(CoordTypeCode.values()).anyMatch(
-                coOrdTypeCode -> ctypeValue.startsWith(coOrdTypeCode.name()) && coOrdTypeCode.isTemporal())) {
+                    coOrdTypeCode -> ctypeValue.startsWith(coOrdTypeCode.name()) && coOrdTypeCode.isTemporal())) {
                 return i;
             }
+        }
+
+        return -1;
+    }
+
+    int getPolarizationAxis() {
+        return getPolarizationAxis(this.header);
+    }
+
+    int getPolarizationAxis(final Header h) {
+        final int naxis = h.getIntValue(Standard.NAXIS);
+        for (int i = 1; i <= naxis; i++) {
+            final String ctypeValue = h.getStringValue(Standard.CTYPEn.n(i));
+            if (ctypeValue != null && Arrays.stream(CoordTypeCode.values()).anyMatch(
+                    coOrdTypeCode -> ctypeValue.startsWith(coOrdTypeCode.name()) && coOrdTypeCode.isPolarization()))
+                return i;
         }
 
         return -1;

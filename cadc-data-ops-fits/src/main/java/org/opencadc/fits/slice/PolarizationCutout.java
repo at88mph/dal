@@ -68,9 +68,11 @@
 
 package org.opencadc.fits.slice;
 
-import ca.nrc.cadc.dali.Shape;
+import ca.nrc.cadc.wcs.exceptions.WCSLibRuntimeException;
 
-import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.IntStream;
 
 import nom.tam.fits.Header;
 import nom.tam.fits.HeaderCardException;
@@ -78,115 +80,64 @@ import nom.tam.fits.header.Standard;
 import org.apache.log4j.Logger;
 
 
-public abstract class ShapeCutout<T extends Shape> extends FITSCutout<T> {
-    private static final Logger LOGGER = Logger.getLogger(ShapeCutout.class);
+public class PolarizationCutout extends FITSCutout<String[]> {
+    private static final Logger LOGGER = Logger.getLogger(PolarizationCutout.class);
 
-    public ShapeCutout(final Header header) throws HeaderCardException {
+    public PolarizationCutout(final Header header) throws HeaderCardException {
         super(header);
     }
 
-    public ShapeCutout(FITSHeaderWCSKeywords fitsHeaderWCSKeywords) {
+    public PolarizationCutout(final FITSHeaderWCSKeywords fitsHeaderWCSKeywords) {
         super(fitsHeaderWCSKeywords);
     }
 
     /**
-     * Infer the coordinate system for this shape.
-     * @return  CoordSys discovered, or null if it cannot be done.
+     * Obtain the bounds of the given cutout.
+     *
+     * @param states The bounds (Stokes states).
+     * @return long[] array of overlapping bounds, or long[0] if all pixels are included.
+     * @throws WCSLibRuntimeException WCSLib (C) error.
      */
-    CoordSys inferCoordSys() {
-        final CoordSys ret;
+    @Override
+    public long[] getBounds(final String[] states) throws WCSLibRuntimeException {
+        final int polarizationAxis = this.fitsHeaderWCSKeywords.getPolarizationAxis();
+        final double crpix = this.fitsHeaderWCSKeywords.getDoubleValue(Standard.CRPIXn.n(polarizationAxis).key());
+        final double crval = this.fitsHeaderWCSKeywords.getDoubleValue(Standard.CRVALn.n(polarizationAxis).key());
+        final double cdelt = this.fitsHeaderWCSKeywords.getDoubleValue(Standard.CDELTn.n(polarizationAxis).key());
 
-        if (!fitsHeaderWCSKeywords.containsKey(Standard.CTYPEn.n(1).key())) {
-            ret = null;
-        } else {
-            final String ctype1 = fitsHeaderWCSKeywords.getStringValue(Standard.CTYPEn.n(1).key());
+        double pix1 = Double.MAX_VALUE;
+        double pix2 = (-1 * Double.MAX_VALUE) - 1.0D;
+        for (final PolarizationState headerState : getHeaderStates(polarizationAxis)) {
+            LOGGER.debug("Checking next header state " + headerState.name());
+            for (final String cutoutState : states) {
+                if (cutoutState.equals(headerState.name())) {
+                    final int value = headerState.getValue();
+                    final double pix = crpix + (value - crval) / cdelt;
+                    pix1 = Math.min(pix1, pix);
+                    pix2 = Math.max(pix2, pix);
 
-            LOGGER.debug("CTYPE1 is " + ctype1);
-
-            final String ctype2 = fitsHeaderWCSKeywords.getStringValue(Standard.CTYPEn.n(2).key());
-            final float equinox = fitsHeaderWCSKeywords.getFloatValue(Standard.EQUINOX.key());
-
-            ret = new CoordSys();
-            ret.name = fitsHeaderWCSKeywords.getStringValue(Standard.RADESYS.key());
-
-            if (CoordSys.GAPPT.equals(ret.name)) {
-                ret.timeDependent = Boolean.TRUE;
-                ret.supported = false;
-            } else if ((ctype1.startsWith("ELON") && ctype2.startsWith("ELAT"))
-                       || (ctype1.startsWith("ELAT") && ctype2.startsWith("ELON"))) {
-                // ecliptic
-                ret.name = CoordSys.ECL;
-                ret.timeDependent = Boolean.TRUE;
-                ret.supported = false;
-            } else if ((ctype1.startsWith("HLON") && ctype2.startsWith("HLAT"))
-                       || (ctype1.startsWith("HLAT") && ctype2.startsWith("HLON"))) {
-                // helio-ecliptic
-                ret.name = CoordSys.HECL;
-                ret.timeDependent = Boolean.TRUE;
-                ret.supported = false;
-            } else if ((ctype1.startsWith("GLON") && ctype2.startsWith("GLAT"))
-                       || (ctype1.startsWith("GLAT") && ctype2.startsWith("GLON"))) {
-                if (CoordSys.GAL.equals(ret.name)) {
-                    LOGGER.debug("found coordsys=" + ret.name + " with GLON,GLAT - OK");
-                } else if (ret.name != null) {
-                    LOGGER.debug("found coordsys=" + ret.name + " with GLON,GLAT - ignoring and assuming GAL");
-                    ret.name = null;
+                    LOGGER.debug("Values now (" + pix1 + ", " + pix2 + ")");
                 }
-                if (ret.name == null) {
-                    ret.name = CoordSys.GAL;
-                }
-                if (ctype1.startsWith("GLAT")) {
-                    ret.swappedAxes = true;
-                }
-                ret.supported = true;
-            } else if ((ctype1.startsWith("RA") && ctype2.startsWith("DEC"))
-                       || (ctype1.startsWith("DEC") && ctype2.startsWith("RA"))) {
-                if (ret.name == null) {
-                    if (equinox == 0.0F) {
-                        ret.name = CoordSys.ICRS;
-                    } else if (Math.abs(equinox - 1950.0) < 1.0) {
-                        ret.name = CoordSys.FK4;
-                    } else if (Math.abs(equinox - 2000.0) < 1.0) {
-                        ret.name = CoordSys.FK5;
-                    } else {
-                        LOGGER.debug("cannot infer coordinate system from RA,DEC and equinox = " + equinox);
-                    }
-                }
-
-                if (ctype1.startsWith("DEC")) {
-                    ret.swappedAxes = true;
-                }
-
-                ret.supported = ret.name != null;
             }
         }
 
-        return ret;
+        return clip(polarizationAxis, pix1, pix2);
     }
 
-    public static class CoordSys implements Serializable {
-        private static final long serialVersionUID = 201207300900L;
+    public PolarizationState[] getHeaderStates(final int polarizationAxis) {
+        final int naxis = this.fitsHeaderWCSKeywords.getIntValue(Standard.NAXIS.key());
+        final double crpix = this.fitsHeaderWCSKeywords.getDoubleValue(Standard.CRPIXn.n(polarizationAxis).key());
+        final double crval = this.fitsHeaderWCSKeywords.getDoubleValue(Standard.CRVALn.n(polarizationAxis).key());
+        final double cdelt = this.fitsHeaderWCSKeywords.getDoubleValue(Standard.CDELTn.n(polarizationAxis).key());
 
-        public static String ICRS = "ICRS";
-        public static String GAL = "GAL";
-        public static String FK4 = "FK4";
-        public static String FK5 = "FK5";
+        final List<PolarizationState> polarizationStates = new ArrayList<>();
 
-        public static String ECL = "ECL";
-        public static String HECL = "HELIOECLIPTIC";
-        public static String GAPPT = "GAPPT";
+        IntStream.range(1, naxis + 1)
+                 .map(i -> (int) (crpix + (i - crval) / cdelt))
+                 .filter(i -> PolarizationState.fromValue(i) != null)
+                 .forEach(i -> polarizationStates.add(PolarizationState.fromValue(i)));
 
-        String name;
-        Boolean timeDependent;
-        boolean supported;
-        boolean swappedAxes = false;
-
-        public String getName() {
-            return name;
-        }
-
-        public boolean isSwappedAxes() {
-            return swappedAxes;
-        }
+        LOGGER.debug("Found states " + polarizationStates);
+        return polarizationStates.toArray(new PolarizationState[0]);
     }
 }

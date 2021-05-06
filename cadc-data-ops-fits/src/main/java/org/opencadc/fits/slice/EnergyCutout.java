@@ -148,8 +148,10 @@ public class EnergyCutout extends FITSCutout<Interval<Number>> {
 
                 final double low = intersectionPixels.getLower();
                 final double up = intersectionPixels.getUpper();
+                final long maxLength = this.fitsHeaderWCSKeywords.getIntValue(
+                        Standard.NAXISn.n(energyAxis).key());
 
-                return clip(spectralWCSKeywords, (long) Math.floor(Math.min(low, up) + 0.5D), (long) Math.ceil(
+                return clip(maxLength, (long) Math.floor(Math.min(low, up) + 0.5D), (long) Math.ceil(
                         Math.max(low, up) - 0.5D));
             }
         }
@@ -205,37 +207,5 @@ public class EnergyCutout extends FITSCutout<Interval<Number>> {
         LOGGER.debug("Calculated pixel values (" + low + "," + hi + ")");
 
         return new Interval<>(Math.min(low, hi), Math.max(low, hi));
-    }
-
-    private long[] clip(final FITSHeaderWCSKeywords energyFITSKeywords, final long lower, final long upper) {
-        final long len = energyFITSKeywords.getIntValue(Standard.NAXISn.n(1).key());
-
-        long x1 = lower;
-        long x2 = upper;
-
-        if (x1 < 1) {
-            x1 = 1;
-        }
-
-        if (x2 > len) {
-            x2 = len;
-        }
-
-        LOGGER.debug("clip: " + len + " (" + x1 + ":" + x2 + ")");
-
-        // all pixels includes
-        if (x1 == 1 && x2 == len) {
-            LOGGER.warn("clip: all");
-            return new long[0];
-        }
-
-        // no pixels included
-        if (x1 > len || x2 < 1) {
-            LOGGER.warn("clip: none");
-            return null;
-        }
-
-        // an actual cutout
-        return new long[]{x1, x2};
     }
 }

@@ -174,7 +174,7 @@ public class PolygonCutout extends ShapeCutout<Polygon> {
         // convert polygonToCut to pixel coordinates and find min/max
         double x1 = Double.MAX_VALUE;
         double x2 = -1.0D * x1;
-        double y1 = x1;
+        double y1 = Double.MAX_VALUE;
         double y2 = -1.0D * y1;
         LOGGER.debug("Bounding box is " + polygonToCut);
         for (final Point point : polygonToCut.getVertices()) {
