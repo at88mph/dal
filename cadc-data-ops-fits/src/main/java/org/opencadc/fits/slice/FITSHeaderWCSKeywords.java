@@ -449,6 +449,7 @@ public class FITSHeaderWCSKeywords implements WCSKeywords {
         final boolean expectCD = destination.containsKey(NOAOExt.CD1_1);
         final boolean expectPC = destination.containsKey(CADCExt.PC1_1);
         final boolean expectPCProper = destination.containsKey(CADCExt.PC01_01);
+        final int temporalAxis = getTemporalAxis(destination);
 
         for (int x = 1; x <= naxis; x++) {
             for (int y = 1; y <= naxis; y++) {
@@ -464,6 +465,11 @@ public class FITSHeaderWCSKeywords implements WCSKeywords {
                 if ((expectPC && !destination.containsKey(pcMatrixKey))
                     || (expectPCProper && !destination.containsKey(pcProperMatrixKey))) {
                     destination.addValue(pcProperMatrixKey, (x == y) ? 1.0D : 0.0D, null);
+                }
+
+                if (x == temporalAxis && !destination.containsKey(CADCExt.CUNITn.n(x))
+                    && !destination.containsKey(CADCExt.TIMEUNIT)) {
+                    destination.addValue(CADCExt.TIMEUNIT.key(), "s", CADCExt.TIMEUNIT.comment());
                 }
             }
 
@@ -498,6 +504,23 @@ public class FITSHeaderWCSKeywords implements WCSKeywords {
             final String ctypeValue = destination.getStringValue(Standard.CTYPEn.n(i));
             if (ctypeValue != null && Arrays.stream(CoordTypeCode.values()).anyMatch(
                 coOrdTypeCode -> ctypeValue.startsWith(coOrdTypeCode.name()) && coOrdTypeCode.isSpectral())) {
+                return i;
+            }
+        }
+
+        return -1;
+    }
+
+    public int getTemporalAxis() {
+        return getTemporalAxis(this.header);
+    }
+
+    int getTemporalAxis(final Header destination) {
+        final int naxis = destination.getIntValue(Standard.NAXIS);
+        for (int i = 1; i <= naxis; i++) {
+            final String ctypeValue = destination.getStringValue(Standard.CTYPEn.n(i));
+            if (ctypeValue != null && Arrays.stream(CoordTypeCode.values()).anyMatch(
+                coOrdTypeCode -> ctypeValue.startsWith(coOrdTypeCode.name()) && coOrdTypeCode.isTemporal())) {
                 return i;
             }
         }

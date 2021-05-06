@@ -66,104 +66,61 @@
  ************************************************************************
  */
 
-package org.opencadc.fits;
+package org.opencadc.fits.slice;
 
-import nom.tam.fits.header.FitsHeaderImpl;
-import nom.tam.fits.header.IFitsHeader;
+import ca.nrc.cadc.date.DateUtil;
+import org.apache.log4j.Logger;
 
-/**
- * Extension to the standard set of FITS headers.
- */
-public enum CADCExt implements IFitsHeader {
+import java.text.ParseException;
+import java.util.Calendar;
+import java.util.Date;
+import java.util.TimeZone;
 
-    CDELT(HDU.IMAGE, VALUE.REAL, "Coord value at incr deg/pixel origin on line axis"),
-    CDELTn(HDU.IMAGE, VALUE.REAL, "Coord value at incr deg/pixel origin on line axis"),
-    CUNITn(HDU.IMAGE, VALUE.STRING, "Units for axis"),
-    LBOUNDn(HDU.IMAGE, VALUE.INTEGER, "Pixel origin along axis"),
-    OBSFREQ(HDU.IMAGE, VALUE.REAL, "Same as RESTFRQ"),
-    PC1_1(HDU.IMAGE, VALUE.REAL, ""),
-    PC01_01(HDU.IMAGE, VALUE.REAL, ""),
-    PC1_2(HDU.IMAGE, VALUE.REAL, ""),
-    PC2_1(HDU.IMAGE, VALUE.REAL, ""),
-    PC2_2(HDU.IMAGE, VALUE.REAL, ""),
-    RESTFRQ(HDU.IMAGE, VALUE.REAL, ""),
+public class MJDTimeConverter {
+    private static final Logger LOGGER = Logger.getLogger(MJDTimeConverter.class);
+
+    public static final String DEFAULT_TIME_UNIT = "s";
+
+    private static final double FROM_JULIAN_DATE = 2400000.5D;
+    private static final double TWENTY_FOUR_HOURS_MS = 86400000.0D;
+
 
     /**
-     * Use RESTFRQ
+     * Convert Julian to MJD.
+     * @param julianDate    The Julian date.
+     * @return  MJD double
      */
-    @Deprecated
-    RESTFREQ(HDU.IMAGE, VALUE.REAL, ""),
-
-    RESTWAV(HDU.IMAGE, VALUE.REAL, ""),
-    SPECSYS(HDU.IMAGE, VALUE.STRING, ""),
-
-    // Temporal values.
-    MJDREF(HDU.IMAGE, VALUE.REAL, "Reference time in MJD"),
-    MJDREFI(HDU.IMAGE, VALUE.REAL, "Integer part of reference time in MJD"),
-    MJDREFF(HDU.IMAGE, VALUE.REAL, "Fractional part of reference time in MJD"),
-    JDREF(HDU.IMAGE, VALUE.REAL, "Reference time in JD"),
-    JDREFI(HDU.IMAGE, VALUE.REAL, "Integer part of reference time in JD"),
-    JDREFF(HDU.IMAGE, VALUE.REAL, "Fractional part of reference time in JD"),
-    DATEBEG("DATE-BEG", HDU.PRIMARY_EXTENSION, VALUE.REAL, "Start time of data in iso-8601"),
-    DATEOBS("DATE-OBS", HDU.PRIMARY_EXTENSION, VALUE.REAL, "Time (or start time) of data in iso-8601"),
-    DATEEND("DATE-END", HDU.PRIMARY_EXTENSION, VALUE.REAL, "Stop time of data in iso-8601"),
-
-    JDBEG("JD-BEG", HDU.PRIMARY_EXTENSION, VALUE.REAL, "Start time of data in JD"),
-    JDOBS("JD-OBS", HDU.PRIMARY_EXTENSION, VALUE.REAL, "Time (or start time) of data in JD"),
-    JDEND("JD-END", HDU.PRIMARY_EXTENSION, VALUE.REAL, "Stop time of data in JD"),
-
-    MJDBEG("MJD-BEG", HDU.PRIMARY_EXTENSION, VALUE.REAL, "Start time of data in MJD"),
-    MJDOBS("MJD-OBS", HDU.PRIMARY_EXTENSION, VALUE.REAL, "Time (or start time) of data in MJD"),
-    MJDEND("MJD-END", HDU.PRIMARY_EXTENSION, VALUE.REAL, "Stop time of data in MJD"),
-
-    TSTART(HDU.PRIMARY_EXTENSION, VALUE.REAL,
-           "Start time of data in units of TIMEUNIT relative to MJDREF, JDREF or DATEREF according to TIMESYS."),
-    TSTOP(HDU.PRIMARY_EXTENSION, VALUE.REAL,
-          "Stop time of data in units of TIMEUNIT relative to MJDREF, JDREF or DATEREF according to TIMESYS."),
-
-    DATEREF(HDU.IMAGE, VALUE.REAL, "Reference time in ISO-8601"),
-
-    TIMESYS(HDU.PRIMARY_EXTENSION, VALUE.STRING, "Time scale.  Defaults to UTC."),
-    TIMEUNIT(HDU.ANY, VALUE.STRING, "Unit of elapsed time.");
-
-    private final IFitsHeader key;
-
-    CADCExt(IFitsHeader.HDU hdu, IFitsHeader.VALUE valueType, String comment) {
-        this.key = new FitsHeaderImpl(name(), IFitsHeader.SOURCE.NOAO, hdu, valueType, comment);
+    public final double fromJulianDate(final double julianDate) {
+        return julianDate - FROM_JULIAN_DATE;
     }
 
-    CADCExt(String key, IFitsHeader.HDU hdu, IFitsHeader.VALUE valueType, String comment) {
-        this.key = new FitsHeaderImpl(name(), IFitsHeader.SOURCE.NOAO, hdu, valueType, comment);
+    /**
+     * Convert the given Date in ISO-8601 format (yyyy-MM-dd'T'HH:mm:ss) in the given time zone to MJD.
+     * @param isoDate       The Date to convert to MJD
+     * @param timeZone      The time zone the date is in to match.
+     * @return      MJD double value
+     */
+    public final double fromISODate(final Date isoDate, final TimeZone timeZone) {
+        final Calendar calendar = Calendar.getInstance(timeZone);
+        calendar.setTime(isoDate);
+
+        final double offsetHours = -(calendar.get(Calendar.ZONE_OFFSET) + calendar.get(Calendar.DST_OFFSET))
+                                   / (60.0D * 1000.0D);
+        LOGGER.debug("Offset hours are " + offsetHours);
+        return fromJulianDate((isoDate.getTime() / TWENTY_FOUR_HOURS_MS) - (offsetHours / 1440.0D) + 2440587.5D);
     }
 
-    @Override
-    public String comment() {
-        return this.key.comment();
-    }
-
-    @Override
-    public IFitsHeader.HDU hdu() {
-        return this.key.hdu();
-    }
-
-    @Override
-    public String key() {
-        return this.key.key();
-    }
-
-    @Override
-    public IFitsHeader n(int... number) {
-        return this.key.n(number);
-    }
-
-    @Override
-    public IFitsHeader.SOURCE status() {
-        return this.key.status();
-    }
-
-    @Override
-    @SuppressWarnings("CPD-END")
-    public IFitsHeader.VALUE valueType() {
-        return this.key.valueType();
+    /**
+     * Convert the given date string from the given time system to MJD.
+     * @param timeSystem    The Time System to convert from.
+     * @param dateString    The date string.
+     * @return  MJD double
+     * @throws ParseException   If the date string is invalid.
+     */
+    public final double fromISODate(final String timeSystem, final String dateString) throws ParseException {
+        LOGGER.debug("fromISODate -> " + timeSystem + " (" + TimeZone.getTimeZone(timeSystem) + ")");
+        final Date iso8601Date = DateUtil.getDateFormat(DateUtil.ISO8601_DATE_FORMAT_LOCAL,
+                                                        TimeZone.getTimeZone(timeSystem)).parse(dateString);
+        return fromISODate(iso8601Date, TimeZone.getTimeZone(timeSystem));
     }
 }

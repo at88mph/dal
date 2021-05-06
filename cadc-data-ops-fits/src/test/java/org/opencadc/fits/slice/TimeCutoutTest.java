@@ -66,104 +66,101 @@
  ************************************************************************
  */
 
-package org.opencadc.fits;
+package org.opencadc.fits.slice;
 
-import nom.tam.fits.header.FitsHeaderImpl;
-import nom.tam.fits.header.IFitsHeader;
+import ca.nrc.cadc.dali.Interval;
+import ca.nrc.cadc.date.DateUtil;
+import ca.nrc.cadc.util.Log4jInit;
+import nom.tam.fits.Header;
+import nom.tam.fits.header.Standard;
+import nom.tam.fits.header.extra.NOAOExt;
+import org.apache.log4j.Level;
+import org.junit.Assert;
+import org.junit.Test;
+import org.opencadc.fits.CADCExt;
 
-/**
- * Extension to the standard set of FITS headers.
- */
-public enum CADCExt implements IFitsHeader {
+import java.util.Calendar;
 
-    CDELT(HDU.IMAGE, VALUE.REAL, "Coord value at incr deg/pixel origin on line axis"),
-    CDELTn(HDU.IMAGE, VALUE.REAL, "Coord value at incr deg/pixel origin on line axis"),
-    CUNITn(HDU.IMAGE, VALUE.STRING, "Units for axis"),
-    LBOUNDn(HDU.IMAGE, VALUE.INTEGER, "Pixel origin along axis"),
-    OBSFREQ(HDU.IMAGE, VALUE.REAL, "Same as RESTFRQ"),
-    PC1_1(HDU.IMAGE, VALUE.REAL, ""),
-    PC01_01(HDU.IMAGE, VALUE.REAL, ""),
-    PC1_2(HDU.IMAGE, VALUE.REAL, ""),
-    PC2_1(HDU.IMAGE, VALUE.REAL, ""),
-    PC2_2(HDU.IMAGE, VALUE.REAL, ""),
-    RESTFRQ(HDU.IMAGE, VALUE.REAL, ""),
 
-    /**
-     * Use RESTFRQ
-     */
-    @Deprecated
-    RESTFREQ(HDU.IMAGE, VALUE.REAL, ""),
+public class TimeCutoutTest extends BaseCutoutTest {
 
-    RESTWAV(HDU.IMAGE, VALUE.REAL, ""),
-    SPECSYS(HDU.IMAGE, VALUE.STRING, ""),
-
-    // Temporal values.
-    MJDREF(HDU.IMAGE, VALUE.REAL, "Reference time in MJD"),
-    MJDREFI(HDU.IMAGE, VALUE.REAL, "Integer part of reference time in MJD"),
-    MJDREFF(HDU.IMAGE, VALUE.REAL, "Fractional part of reference time in MJD"),
-    JDREF(HDU.IMAGE, VALUE.REAL, "Reference time in JD"),
-    JDREFI(HDU.IMAGE, VALUE.REAL, "Integer part of reference time in JD"),
-    JDREFF(HDU.IMAGE, VALUE.REAL, "Fractional part of reference time in JD"),
-    DATEBEG("DATE-BEG", HDU.PRIMARY_EXTENSION, VALUE.REAL, "Start time of data in iso-8601"),
-    DATEOBS("DATE-OBS", HDU.PRIMARY_EXTENSION, VALUE.REAL, "Time (or start time) of data in iso-8601"),
-    DATEEND("DATE-END", HDU.PRIMARY_EXTENSION, VALUE.REAL, "Stop time of data in iso-8601"),
-
-    JDBEG("JD-BEG", HDU.PRIMARY_EXTENSION, VALUE.REAL, "Start time of data in JD"),
-    JDOBS("JD-OBS", HDU.PRIMARY_EXTENSION, VALUE.REAL, "Time (or start time) of data in JD"),
-    JDEND("JD-END", HDU.PRIMARY_EXTENSION, VALUE.REAL, "Stop time of data in JD"),
-
-    MJDBEG("MJD-BEG", HDU.PRIMARY_EXTENSION, VALUE.REAL, "Start time of data in MJD"),
-    MJDOBS("MJD-OBS", HDU.PRIMARY_EXTENSION, VALUE.REAL, "Time (or start time) of data in MJD"),
-    MJDEND("MJD-END", HDU.PRIMARY_EXTENSION, VALUE.REAL, "Stop time of data in MJD"),
-
-    TSTART(HDU.PRIMARY_EXTENSION, VALUE.REAL,
-           "Start time of data in units of TIMEUNIT relative to MJDREF, JDREF or DATEREF according to TIMESYS."),
-    TSTOP(HDU.PRIMARY_EXTENSION, VALUE.REAL,
-          "Stop time of data in units of TIMEUNIT relative to MJDREF, JDREF or DATEREF according to TIMESYS."),
-
-    DATEREF(HDU.IMAGE, VALUE.REAL, "Reference time in ISO-8601"),
-
-    TIMESYS(HDU.PRIMARY_EXTENSION, VALUE.STRING, "Time scale.  Defaults to UTC."),
-    TIMEUNIT(HDU.ANY, VALUE.STRING, "Unit of elapsed time.");
-
-    private final IFitsHeader key;
-
-    CADCExt(IFitsHeader.HDU hdu, IFitsHeader.VALUE valueType, String comment) {
-        this.key = new FitsHeaderImpl(name(), IFitsHeader.SOURCE.NOAO, hdu, valueType, comment);
+    static {
+        Log4jInit.setLevel("org.opencadc.fits.slice", Level.DEBUG);
     }
 
-    CADCExt(String key, IFitsHeader.HDU hdu, IFitsHeader.VALUE valueType, String comment) {
-        this.key = new FitsHeaderImpl(name(), IFitsHeader.SOURCE.NOAO, hdu, valueType, comment);
+    @Test
+    public void testSimpleOverlap() throws Exception {
+        final Header testHeader = new Header();
+        final Calendar calendar = Calendar.getInstance(DateUtil.UTC);
+        calendar.set(2007, Calendar.SEPTEMBER, 18, 1, 15, 0);
+        calendar.set(Calendar.MILLISECOND, 0);
+
+        testHeader.addValue(Standard.NAXIS, 1);
+        testHeader.addValue(Standard.NAXISn.n(1), 11);
+        testHeader.addValue(CADCExt.CUNITn.n(1), "s");
+        testHeader.addValue(Standard.CRVALn.n(1), 2375.341D);
+        testHeader.addValue(Standard.CRPIXn.n(1), 10.0);
+        testHeader.addValue(Standard.CDELTn.n(1), 13.3629);
+        testHeader.addValue(Standard.CTYPEn.n(1), "UTC");
+        testHeader.addValue(CADCExt.DATEOBS, "2008-10-07T00:39:35.3342");
+        testHeader.addValue(CADCExt.MJDOBS, 54746.02749237);
+        testHeader.addValue(CADCExt.MJDREF, 54746.0);
+
+        final Interval<Number> testInterval = new Interval<>(54746.013D, 54746.058D);
+        final TimeCutout testSubject = new TimeCutout(testHeader);
+
+        final long[] results = testSubject.getBounds(testInterval);
+        final long[] expected = new long[]{1L, 10L};
+
+        assertFuzzyPixelArrayEquals("Wrong output.", expected, results);
     }
 
-    @Override
-    public String comment() {
-        return this.key.comment();
+    @Test
+    public void testSimpleMJDOverlap() throws Exception {
+        final Header testHeader = new Header();
+
+        testHeader.addValue(Standard.NAXIS, 1);
+        testHeader.addValue(Standard.NAXISn.n(1), 350);
+        testHeader.addValue(CADCExt.CUNITn.n(1), "s");
+        testHeader.addValue(Standard.CRVALn.n(1), 40.0D); // Forty seconds long exposure
+        testHeader.addValue(Standard.CRPIXn.n(1), 102.0);
+        testHeader.addValue(Standard.CDELTn.n(1), 0.369);
+        testHeader.addValue(Standard.CTYPEn.n(1), "UTC");
+        testHeader.addValue(CADCExt.MJDBEG, 54533.0112D);
+        testHeader.addValue(CADCExt.MJDEND, 54565.0112D);
+        testHeader.addValue(CADCExt.MJDREFI, 54468);
+        testHeader.addValue(CADCExt.MJDREFF, 0.2489D);
+
+        final Interval<Number> testInterval = new Interval<>(54468.2489864D, 54468.24901D);
+        final TimeCutout testSubject = new TimeCutout(testHeader);
+
+        final long[] results = testSubject.getBounds(testInterval);
+        final long[] expected = new long[]{12L, 19L};
+
+        assertFuzzyPixelArrayEquals("Wrong output.", expected, results);
     }
 
-    @Override
-    public IFitsHeader.HDU hdu() {
-        return this.key.hdu();
-    }
+    @Test
+    public void testNoOverlap() throws Exception {
+        final Header testHeader = new Header();
 
-    @Override
-    public String key() {
-        return this.key.key();
-    }
+        testHeader.addValue(Standard.NAXIS, 1);
+        testHeader.addValue(Standard.NAXISn.n(1), 1600);
+        testHeader.addValue(CADCExt.CUNITn.n(1), "d");
+        testHeader.addValue(Standard.CRVALn.n(1), 3.23D);  // 3.23 days exposure
+        testHeader.addValue(Standard.CRPIXn.n(1), 1.0D);
+        testHeader.addValue(Standard.CDELTn.n(1), 7.0856D);
+        testHeader.addValue(Standard.CTYPEn.n(1), "TIME");
+        testHeader.addValue(NOAOExt.TIMESYS, "UTC");
+        testHeader.addValue(CADCExt.DATEBEG, "1977-11-25T01:21:13.0");
+        testHeader.addValue(CADCExt.DATEEND, "1977-11-25T03:11:00.0");
+        testHeader.addValue(CADCExt.MJDREF, 30005.3321D);
 
-    @Override
-    public IFitsHeader n(int... number) {
-        return this.key.n(number);
-    }
+        final Interval<Number> testInterval = new Interval<>(52644.1D, 52830.33D);
+        final TimeCutout testSubject = new TimeCutout(testHeader);
 
-    @Override
-    public IFitsHeader.SOURCE status() {
-        return this.key.status();
-    }
+        final long[] results = testSubject.getBounds(testInterval);
 
-    @Override
-    @SuppressWarnings("CPD-END")
-    public IFitsHeader.VALUE valueType() {
-        return this.key.valueType();
+        Assert.assertNull("Should be no overlap (NULL).", results);
     }
 }
