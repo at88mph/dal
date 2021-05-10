@@ -87,6 +87,10 @@ public class WCSCutoutUtil {
             return WCSCutoutUtil.getSpatialBounds(header, cutout.pos);
         } else if (cutout.band != null) {
             return WCSCutoutUtil.getSpectralBounds(header, cutout.band);
+        } else if (cutout.time != null) {
+            return WCSCutoutUtil.getTemporalBounds(header, cutout.time);
+        } else if ((cutout.pol != null) && !cutout.pol.isEmpty()) {
+            return WCSCutoutUtil.getPolarizationBounds(header, cutout.pol);
         } else {
             return null;
         }
@@ -108,11 +112,13 @@ public class WCSCutoutUtil {
         return new EnergyCutout(header).getBounds(spectralInterval);
     }
 
-    static long[] getTemporalBounds(final Header header, final Interval<Number> temporalInterval) {
-        return null;
+    static long[] getTemporalBounds(final Header header, final Interval<Number> temporalInterval)
+            throws HeaderCardException {
+        return new TimeCutout(header).getBounds(temporalInterval);
     }
 
-    static long[] getPolarizationBounds(final Header header, final List<String> polarizationStates) {
-        return null;
+    static long[] getPolarizationBounds(final Header header, final List<String> polarizationStates)
+            throws HeaderCardException {
+        return new PolarizationCutout(header).getBounds(polarizationStates.toArray(new String[0]));
     }
 }
