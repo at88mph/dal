@@ -68,89 +68,53 @@
 
 package org.opencadc.fits.slice;
 
-import ca.nrc.cadc.dali.DaliUtil;
+import ca.nrc.cadc.dali.Point;
+import ca.nrc.cadc.dali.Polygon;
+import ca.nrc.cadc.dali.Range;
 import ca.nrc.cadc.wcs.exceptions.NoSuchKeywordException;
 import ca.nrc.cadc.wcs.exceptions.WCSLibRuntimeException;
 import nom.tam.fits.Header;
 import nom.tam.fits.HeaderCardException;
-import org.apache.log4j.Logger;
 
 
-public abstract class FITSCutout<T> {
-    private static final Logger LOGGER = Logger.getLogger(FITSCutout.class);
-    static final String INPUT_TOO_DISTANT_ERROR_MESSAGE = "One or more of the world coordinates were invalid(9)";
-
-    protected final FITSHeaderWCSKeywords fitsHeaderWCSKeywords;
-
-    
-    public FITSCutout(final Header header) throws HeaderCardException {
-        DaliUtil.assertNotNull("header", header);
-        postProcess(header);
-        this.fitsHeaderWCSKeywords = new FITSHeaderWCSKeywords(header);
-    }
-
-    protected FITSCutout(final FITSHeaderWCSKeywords fitsHeaderWCSKeywords) {
-        DaliUtil.assertNotNull("fitsHeaderWCSKeywords", fitsHeaderWCSKeywords);
-        this.fitsHeaderWCSKeywords = fitsHeaderWCSKeywords;
-    }
-
-    /**
-     * Implementors can override this to further process the Header to accommodate different cutout types.  Leave empty
-     * if no further processing needs to be done.
-     * @param header    The Header to modify.
-     * @throws HeaderCardException  if modification fails.
-     */
-    protected void postProcess(final Header header) throws HeaderCardException {
-
+public class RangeCutout extends ShapeCutout<Range> {
+    public RangeCutout(Header header) throws HeaderCardException {
+        super(header);
     }
 
     /**
      * Obtain the bounds of the given cutout.
-     * @param cutoutBound   The bounds (shape, interval etc.) of the cutout.
-     * @return  long[] array of overlapping bounds, or long[0] if all pixels are included.
      *
+     * @param cutoutBound The bounds (shape, interval etc.) of the cutout.
+     * @return long[] array of overlapping bounds, or long[0] if all pixels are included.
      * @throws NoSuchKeywordException Unknown keyword found.
      * @throws WCSLibRuntimeException WCSLib (C) error.
-     * @throws HeaderCardException  If a FITS Header card couldn't be read.
+     * @throws HeaderCardException    If a FITS Header card couldn't be read.
      */
-    public abstract long[] getBounds(final T cutoutBound)
-            throws NoSuchKeywordException, WCSLibRuntimeException, HeaderCardException;
+    @Override
+    public long[] getBounds(final Range cutoutBound)
+            throws NoSuchKeywordException, WCSLibRuntimeException, HeaderCardException {
+        final double x1 = cutoutBound.getLongitude().getLower();
+        final double x2 = cutoutBound.getLongitude().getUpper();
+        final double y1 = cutoutBound.getLatitude().getLower();
+        final double y2 = cutoutBound.getLatitude().getUpper();
 
-    /**
-     * Clip the given bounds for the bounding range of the given axis.
-     * @param len   The max length to clip at.
-     * @param lower The lower end to check.
-     * @param upper The upper end to check.
-     * @return  The array clipped, or empty array for entire data, or null if no overlap.
-     */
-    long[] clip(final long len, final double lower, final double upper) {
+        final Polygon boundingBox = new Polygon();
+        boundingBox.getVertices().add(new Point(x1, y1));
+        boundingBox.getVertices().add(new Point(x2, y1));
+        boundingBox.getVertices().add(new Point(x2, y2));
+        boundingBox.getVertices().add(new Point(x1, y2));
 
-        long x1 = (long) Math.floor(lower);
-        long x2 = (long) Math.ceil(upper);
-
-        if (x1 < 1) {
-            x1 = 1;
+        final PolygonCutout polygonCutout = new PolygonCutout(this.fitsHeaderWCSKeywords.getHeader());
+        try {
+            return polygonCutout.getBounds(boundingBox);
+        } catch (WCSLibRuntimeException wcsLibRuntimeException) {
+            if (wcsLibRuntimeException.getMessage().equals(INPUT_TOO_DISTANT_ERROR_MESSAGE)) {
+                // No overlap
+                return null;
+            } else {
+                throw wcsLibRuntimeException;
+            }
         }
-
-        if (x2 > len) {
-            x2 = len;
-        }
-
-        LOGGER.debug("clip: " + len + " (" + x1 + ":" + x2 + ")");
-
-        // all pixels includes
-        if (x1 == 1 && x2 == len) {
-            LOGGER.warn("clip: all");
-            return new long[0];
-        }
-
-        // no pixels included
-        if (x1 > len || x2 < 1) {
-            LOGGER.warn("clip: none");
-            return null;
-        }
-
-        // an actual cutout
-        return new long[]{x1, x2};
     }
 }

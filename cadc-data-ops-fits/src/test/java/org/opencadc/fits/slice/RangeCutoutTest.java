@@ -68,89 +68,67 @@
 
 package org.opencadc.fits.slice;
 
-import ca.nrc.cadc.dali.DaliUtil;
-import ca.nrc.cadc.wcs.exceptions.NoSuchKeywordException;
-import ca.nrc.cadc.wcs.exceptions.WCSLibRuntimeException;
+import ca.nrc.cadc.dali.DoubleInterval;
+import ca.nrc.cadc.dali.Range;
+import ca.nrc.cadc.util.FileUtil;
+import ca.nrc.cadc.util.Log4jInit;
 import nom.tam.fits.Header;
-import nom.tam.fits.HeaderCardException;
+import nom.tam.util.ArrayDataInput;
+import nom.tam.util.BufferedDataInputStream;
+import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
+import org.junit.Assert;
+import org.junit.Test;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.InputStream;
 
-public abstract class FITSCutout<T> {
-    private static final Logger LOGGER = Logger.getLogger(FITSCutout.class);
-    static final String INPUT_TOO_DISTANT_ERROR_MESSAGE = "One or more of the world coordinates were invalid(9)";
+public class RangeCutoutTest extends BaseCutoutTest {
+    private static final Logger LOGGER = Logger.getLogger(RangeCutoutTest.class);
 
-    protected final FITSHeaderWCSKeywords fitsHeaderWCSKeywords;
-
-    
-    public FITSCutout(final Header header) throws HeaderCardException {
-        DaliUtil.assertNotNull("header", header);
-        postProcess(header);
-        this.fitsHeaderWCSKeywords = new FITSHeaderWCSKeywords(header);
+    static {
+        Log4jInit.setLevel("org.opencadc.fits.slice", Level.DEBUG);
     }
 
-    protected FITSCutout(final FITSHeaderWCSKeywords fitsHeaderWCSKeywords) {
-        DaliUtil.assertNotNull("fitsHeaderWCSKeywords", fitsHeaderWCSKeywords);
-        this.fitsHeaderWCSKeywords = fitsHeaderWCSKeywords;
+    @Test
+    public void testGetBounds() throws Exception {
+        final long startMillis = System.currentTimeMillis();
+        final String headerFileName = "test-alma-cube-header.txt";
+        final File testFile = FileUtil.getFileFromResource(headerFileName, CircleCutoutTest.class);
+
+        try (final InputStream inputStream = new FileInputStream(testFile);
+             final ArrayDataInput arrayDataInput = new BufferedDataInputStream(inputStream)) {
+            final Header testHeader = Header.readHeader(arrayDataInput);
+            final Range range = new Range(new DoubleInterval(246.50902531258566D, 246.53097468741436D),
+                                          new DoubleInterval(-24.34D, -24.319999999999997D));
+            final RangeCutout rangeCutout = new RangeCutout(testHeader);
+
+            final long[] expected = new long[]{169, 300, 151, 300};
+            final long[] result = rangeCutout.getBounds(range);
+
+            assertFuzzyPixelArrayEquals("Wrong ALMA range cutout.", expected, result);
+        }
+        LOGGER.debug("RangeCutoutTest.testGetBounds OK: " + (System.currentTimeMillis() - startMillis) + " ms");
     }
 
-    /**
-     * Implementors can override this to further process the Header to accommodate different cutout types.  Leave empty
-     * if no further processing needs to be done.
-     * @param header    The Header to modify.
-     * @throws HeaderCardException  if modification fails.
-     */
-    protected void postProcess(final Header header) throws HeaderCardException {
+    @Test
+    public void testNoOverlap() throws Exception {
+        final long startMillis = System.currentTimeMillis();
+        final String headerFileName = "test-alma-cube-header.txt";
+        final File testFile = FileUtil.getFileFromResource(headerFileName, CircleCutoutTest.class);
 
-    }
+        try (final InputStream inputStream = new FileInputStream(testFile);
+             final ArrayDataInput arrayDataInput = new BufferedDataInputStream(inputStream)) {
+            final Header testHeader = Header.readHeader(arrayDataInput);
+            final Range range = new Range(new DoubleInterval(110.5D, 155.8D),
+                                          new DoubleInterval(-4.34D, 10.31D));
+            final RangeCutout rangeCutout = new RangeCutout(testHeader);
 
-    /**
-     * Obtain the bounds of the given cutout.
-     * @param cutoutBound   The bounds (shape, interval etc.) of the cutout.
-     * @return  long[] array of overlapping bounds, or long[0] if all pixels are included.
-     *
-     * @throws NoSuchKeywordException Unknown keyword found.
-     * @throws WCSLibRuntimeException WCSLib (C) error.
-     * @throws HeaderCardException  If a FITS Header card couldn't be read.
-     */
-    public abstract long[] getBounds(final T cutoutBound)
-            throws NoSuchKeywordException, WCSLibRuntimeException, HeaderCardException;
+            final long[] result = rangeCutout.getBounds(range);
 
-    /**
-     * Clip the given bounds for the bounding range of the given axis.
-     * @param len   The max length to clip at.
-     * @param lower The lower end to check.
-     * @param upper The upper end to check.
-     * @return  The array clipped, or empty array for entire data, or null if no overlap.
-     */
-    long[] clip(final long len, final double lower, final double upper) {
-
-        long x1 = (long) Math.floor(lower);
-        long x2 = (long) Math.ceil(upper);
-
-        if (x1 < 1) {
-            x1 = 1;
+            Assert.assertNull("Wrong ALMA range cutout.", result);
         }
-
-        if (x2 > len) {
-            x2 = len;
-        }
-
-        LOGGER.debug("clip: " + len + " (" + x1 + ":" + x2 + ")");
-
-        // all pixels includes
-        if (x1 == 1 && x2 == len) {
-            LOGGER.warn("clip: all");
-            return new long[0];
-        }
-
-        // no pixels included
-        if (x1 > len || x2 < 1) {
-            LOGGER.warn("clip: none");
-            return null;
-        }
-
-        // an actual cutout
-        return new long[]{x1, x2};
+        LOGGER.debug("RangeCutoutTest.testNoOverlap OK: " + (System.currentTimeMillis() - startMillis) + " ms");
     }
 }
