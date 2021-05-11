@@ -71,6 +71,7 @@ package org.opencadc.fits.slice;
 import ca.nrc.cadc.dali.Circle;
 import ca.nrc.cadc.dali.Interval;
 import ca.nrc.cadc.dali.Polygon;
+import ca.nrc.cadc.dali.Range;
 import ca.nrc.cadc.dali.Shape;
 import ca.nrc.cadc.wcs.exceptions.NoSuchKeywordException;
 import nom.tam.fits.Header;
@@ -102,6 +103,8 @@ public class WCSCutoutUtil {
             return new CircleCutout(header).getBounds((Circle) shape);
         } else if (shape instanceof Polygon) {
             return new PolygonCutout(header).getBounds((Polygon) shape);
+        } else if (shape instanceof Range) {
+            return new RangeCutout(header).getBounds((Range) shape);
         } else {
             return null;
         }

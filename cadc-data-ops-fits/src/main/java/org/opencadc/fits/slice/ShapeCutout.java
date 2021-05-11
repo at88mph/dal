@@ -85,9 +85,6 @@ public abstract class ShapeCutout<T extends Shape> extends FITSCutout<T> {
         super(header);
     }
 
-    public ShapeCutout(FITSHeaderWCSKeywords fitsHeaderWCSKeywords) {
-        super(fitsHeaderWCSKeywords);
-    }
 
     /**
      * Infer the coordinate system for this shape.
