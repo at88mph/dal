@@ -68,13 +68,14 @@
 
 package org.opencadc.fits;
 
+import java.io.IOException;
+import java.util.Iterator;
+import java.util.NoSuchElementException;
+
 import nom.tam.fits.BasicHDU;
 import nom.tam.fits.Fits;
 import nom.tam.fits.FitsException;
 
-import java.io.IOException;
-import java.util.Iterator;
-import java.util.NoSuchElementException;
 
 public class HDUIterator implements Iterator<BasicHDU<?>> {
 
