@@ -69,6 +69,8 @@
 package org.opencadc.fits.slice;
 
 import ca.nrc.cadc.wcs.exceptions.WCSLibRuntimeException;
+import java.util.Arrays;
+import java.util.List;
 import nom.tam.fits.Header;
 import nom.tam.fits.HeaderCardException;
 import nom.tam.fits.header.Standard;
@@ -76,8 +78,6 @@ import org.apache.log4j.Logger;
 import org.opencadc.soda.ExtensionSlice;
 import org.opencadc.soda.PixelRange;
 
-import java.util.Arrays;
-import java.util.List;
 
 public class PixelCutout extends FITSCutout<ExtensionSlice> {
     private static final Logger LOGGER = Logger.getLogger(PixelCutout.class);

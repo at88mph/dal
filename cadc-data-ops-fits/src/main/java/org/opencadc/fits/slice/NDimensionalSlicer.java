@@ -494,40 +494,9 @@ public class NDimensionalSlicer {
         return false;
     }
 
-    /**
-     * Obtain the overlapping indexes of matching HDUs.  This will return a unique list of Integers in file order,
-     * rather than the order that they were requested.
-     *
-     * @param fits    The Fits object to scan.
-     * @param cutout  The requested cutout.
-     * @return  An Map of overlapping hduIndex->slice[], or empty Map.  Never null.
-     * @throws FitsException if the header could not be read
-     */
-    private Map<Integer, List<ExtensionSlice>> getOverlap(final Fits fits, final Cutout cutout)
-            throws FitsException, NoSuchKeywordException {
-        if ((cutout.pixelCutouts != null) && !cutout.pixelCutouts.isEmpty()) {
-            return getOverlap(fits, cutout.pixelCutouts);
-        } else {
-            // A Set is used to eliminate duplicates from the inner loop below.
-            final Map<Integer, List<ExtensionSlice>> overlapHDUIndexesSlices = new LinkedHashMap<>();
-
-            // Walk through the cache first.
-            int hduIndex = 0;
-
-            for (final HDUIterator hduIterator = new HDUIterator(fits); hduIterator.hasNext();) {
-                final BasicHDU<?> hdu = hduIterator.next();
-                final Header header = hdu.getHeader();
-                mapOverlap(header, cutout, hduIndex, overlapHDUIndexesSlices);
-                hduIndex++;
-            }
-
-            return overlapHDUIndexesSlices;
-        }
-    }
-
     private void mapOverlap(final Header header, final Cutout cutout, final int hduIndex,
                             final Map<Integer, List<ExtensionSlice>> overlapHDUIndexesSlices)
-            throws HeaderCardException, NoSuchKeywordException{
+            throws HeaderCardException, NoSuchKeywordException {
         final long[] pixelCutoutBounds = WCSCutoutUtil.getBounds(header, cutout);
         if (pixelCutoutBounds != null) {
             final ExtensionSlice overlapSlice = new ExtensionSlice(hduIndex);
@@ -539,45 +508,6 @@ public class NDimensionalSlicer {
             overlapSlices.add(overlapSlice);
             overlapHDUIndexesSlices.put(hduIndex, overlapSlices);
         }
-    }
-
-    private Map<Integer, List<ExtensionSlice>> getOverlap(final Fits fits, final List<ExtensionSlice> extensionSlices)
-            throws FitsException {
-        // A Set is used to eliminate duplicates from the inner loop below.
-        final Map<Integer, List<ExtensionSlice>> overlapHDUIndexesSlices = new LinkedHashMap<>();
-
-        int matchCount = 0;
-        int hduIndex = 0;
-        for (final HDUIterator hduIterator = new HDUIterator(fits);
-             hduIterator.hasNext() && matchCount < extensionSlices.size();) {
-            final BasicHDU<?> hdu = hduIterator.next();
-            matchCount += mapOverlap(hdu, hduIndex, extensionSlices, overlapHDUIndexesSlices);
-            hduIndex++;
-        }
-
-        // Check for missing matches.
-        final List<ExtensionSlice> matchedValues =
-                overlapHDUIndexesSlices.values().stream().flatMap(Collection::stream).collect(Collectors.toList());
-        final List<ExtensionSlice> containsAll =
-                extensionSlices.stream().filter(e -> {
-                    boolean contained = false;
-                    for (final ExtensionSlice extensionSlice : matchedValues) {
-                        final List<PixelRange> matchedPixelRange = extensionSlice.getPixelRanges();
-                        final List<PixelRange> requestedPixelRange = e.getPixelRanges();
-                        if ((matchedPixelRange.isEmpty() && requestedPixelRange.isEmpty())
-                            || requestedPixelRange.containsAll(matchedPixelRange)) {
-                            contained = true;
-                            break;
-                        }
-                    }
-                    return !contained;
-                }).collect(Collectors.toList());
-
-        if (!containsAll.isEmpty()) {
-            throw new IllegalArgumentException("One or more requested slices could not be found:\n" + containsAll);
-        }
-
-        return overlapHDUIndexesSlices;
     }
 
     // find the subset of slices that overlap the specified HDU; there can be multiple
@@ -618,6 +548,76 @@ public class NDimensionalSlicer {
         }
 
         return overlappingSlices.size();
+    }
+
+    /**
+     * Obtain the overlapping indexes of matching HDUs.  This will return a unique list of Integers in file order,
+     * rather than the order that they were requested.
+     *
+     * @param fits    The Fits object to scan.
+     * @param cutout  The requested cutout.
+     * @return  An Map of overlapping hduIndex->slice[], or empty Map.  Never null.
+     * @throws FitsException if the header could not be read
+     */
+    private Map<Integer, List<ExtensionSlice>> getOverlap(final Fits fits, final Cutout cutout)
+            throws FitsException, NoSuchKeywordException {
+        if ((cutout.pixelCutouts != null) && !cutout.pixelCutouts.isEmpty()) {
+            return getOverlap(fits, cutout.pixelCutouts);
+        } else {
+            // A Set is used to eliminate duplicates from the inner loop below.
+            final Map<Integer, List<ExtensionSlice>> overlapHDUIndexesSlices = new LinkedHashMap<>();
+
+            // Walk through the cache first.
+            int hduIndex = 0;
+
+            for (final HDUIterator hduIterator = new HDUIterator(fits); hduIterator.hasNext();) {
+                final BasicHDU<?> hdu = hduIterator.next();
+                final Header header = hdu.getHeader();
+                mapOverlap(header, cutout, hduIndex, overlapHDUIndexesSlices);
+                hduIndex++;
+            }
+
+            return overlapHDUIndexesSlices;
+        }
+    }
+
+    private Map<Integer, List<ExtensionSlice>> getOverlap(final Fits fits, final List<ExtensionSlice> extensionSlices)
+            throws FitsException {
+        // A Set is used to eliminate duplicates from the inner loop below.
+        final Map<Integer, List<ExtensionSlice>> overlapHDUIndexesSlices = new LinkedHashMap<>();
+
+        int matchCount = 0;
+        int hduIndex = 0;
+        for (final HDUIterator hduIterator = new HDUIterator(fits);
+             hduIterator.hasNext() && matchCount < extensionSlices.size();) {
+            final BasicHDU<?> hdu = hduIterator.next();
+            matchCount += mapOverlap(hdu, hduIndex, extensionSlices, overlapHDUIndexesSlices);
+            hduIndex++;
+        }
+
+        // Check for missing matches.
+        final List<ExtensionSlice> matchedValues =
+                overlapHDUIndexesSlices.values().stream().flatMap(Collection::stream).collect(Collectors.toList());
+        final List<ExtensionSlice> containsAll =
+                extensionSlices.stream().filter(e -> {
+                    boolean contained = false;
+                    for (final ExtensionSlice extensionSlice : matchedValues) {
+                        final List<PixelRange> matchedPixelRange = extensionSlice.getPixelRanges();
+                        final List<PixelRange> requestedPixelRange = e.getPixelRanges();
+                        if ((matchedPixelRange.isEmpty() && requestedPixelRange.isEmpty())
+                            || requestedPixelRange.containsAll(matchedPixelRange)) {
+                            contained = true;
+                            break;
+                        }
+                    }
+                    return !contained;
+                }).collect(Collectors.toList());
+
+        if (!containsAll.isEmpty()) {
+            throw new IllegalArgumentException("One or more requested slices could not be found:\n" + containsAll);
+        }
+
+        return overlapHDUIndexesSlices;
     }
 
     private ExtensionSlice getOverlap(final ExtensionSlice extensionSlice, final PixelCutout pixelCutout) {

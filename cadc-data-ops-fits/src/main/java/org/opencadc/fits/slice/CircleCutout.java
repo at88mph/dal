@@ -73,12 +73,14 @@ import ca.nrc.cadc.dali.Point;
 import ca.nrc.cadc.dali.Polygon;
 import ca.nrc.cadc.wcs.exceptions.NoSuchKeywordException;
 import ca.nrc.cadc.wcs.exceptions.WCSLibRuntimeException;
+
+import java.util.Arrays;
+
 import nom.tam.fits.Header;
 import nom.tam.fits.HeaderCardException;
 import nom.tam.fits.header.Standard;
-import org.apache.log4j.Logger;
 
-import java.util.Arrays;
+import org.apache.log4j.Logger;
 
 
 public class CircleCutout extends ShapeCutout<Circle> {
