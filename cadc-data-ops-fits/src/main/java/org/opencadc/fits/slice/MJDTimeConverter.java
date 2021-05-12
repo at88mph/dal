@@ -69,12 +69,13 @@
 package org.opencadc.fits.slice;
 
 import ca.nrc.cadc.date.DateUtil;
-import org.apache.log4j.Logger;
 
 import java.text.ParseException;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.TimeZone;
+
+import org.apache.log4j.Logger;
 
 public class MJDTimeConverter {
     private static final Logger LOGGER = Logger.getLogger(MJDTimeConverter.class);
