@@ -74,11 +74,12 @@ import ca.nrc.cadc.dali.Polygon;
 import ca.nrc.cadc.dali.Range;
 import ca.nrc.cadc.dali.Shape;
 import ca.nrc.cadc.wcs.exceptions.NoSuchKeywordException;
+
+import java.util.List;
+
 import nom.tam.fits.Header;
 import nom.tam.fits.HeaderCardException;
 import org.opencadc.soda.server.Cutout;
-
-import java.util.List;
 
 
 public class WCSCutoutUtil {
