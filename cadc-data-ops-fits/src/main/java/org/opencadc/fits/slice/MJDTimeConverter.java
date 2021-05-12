@@ -69,12 +69,13 @@
 package org.opencadc.fits.slice;
 
 import ca.nrc.cadc.date.DateUtil;
-import org.apache.log4j.Logger;
 
 import java.text.ParseException;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.TimeZone;
+
+import org.apache.log4j.Logger;
 
 public class MJDTimeConverter {
     private static final Logger LOGGER = Logger.getLogger(MJDTimeConverter.class);
@@ -118,9 +119,9 @@ public class MJDTimeConverter {
      * @throws ParseException   If the date string is invalid.
      */
     public final double fromISODate(final String timeSystem, final String dateString) throws ParseException {
-        LOGGER.debug("fromISODate -> " + timeSystem + " (" + TimeZone.getTimeZone(timeSystem) + ")");
-        final Date iso8601Date = DateUtil.getDateFormat(DateUtil.ISO8601_DATE_FORMAT_LOCAL,
-                                                        TimeZone.getTimeZone(timeSystem)).parse(dateString);
-        return fromISODate(iso8601Date, TimeZone.getTimeZone(timeSystem));
+        final TimeZone timeZone = TimeZone.getTimeZone(timeSystem);
+        LOGGER.debug("fromISODate -> " + timeSystem + " (" + timeZone + ")");
+        final Date iso8601Date = DateUtil.getDateFormat(DateUtil.ISO8601_DATE_FORMAT_LOCAL, timeZone).parse(dateString);
+        return fromISODate(iso8601Date, timeZone);
     }
 }
