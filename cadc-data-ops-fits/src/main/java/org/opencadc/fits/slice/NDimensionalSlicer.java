@@ -500,8 +500,11 @@ public class NDimensionalSlicer {
         final long[] pixelCutoutBounds = WCSCutoutUtil.getBounds(header, cutout);
         if (pixelCutoutBounds != null) {
             final ExtensionSlice overlapSlice = new ExtensionSlice(hduIndex);
-            overlapSlice.getPixelRanges().add(
-                    new PixelRange((int) pixelCutoutBounds[0], (int) pixelCutoutBounds[1]));
+            for (int i = 0; i < pixelCutoutBounds.length; i += 2) {
+                overlapSlice.getPixelRanges().add(
+                        new PixelRange((int) pixelCutoutBounds[i], (int) pixelCutoutBounds[i + 1]));
+            }
+
             final List<ExtensionSlice> overlapSlices = overlapHDUIndexesSlices.containsKey(hduIndex)
                                                        ? overlapHDUIndexesSlices.get(hduIndex)
                                                        : new ArrayList<>();
