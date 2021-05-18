@@ -132,7 +132,7 @@ public class EnergyCutoutTest extends BaseCutoutTest {
             final Interval<Number> energyCutoutBounds = new Interval<>(1.10328E-2D, 9.99308E-2D);
 
             final long[] resultBounds = energyCutout.getBounds(energyCutoutBounds);
-            final long[] expectedBounds = new long[]{1L, 13L};
+            final long[] expectedBounds = new long[]{1L, 12150L, 1L, 12150L, 1L, 13L, 1L, 4L};
 
             assertFuzzyPixelArrayEquals("Wrong energy bounds for VLASS Cube.", expectedBounds, resultBounds);
 
@@ -155,7 +155,7 @@ public class EnergyCutoutTest extends BaseCutoutTest {
             final EnergyCutout energyCutout = new EnergyCutout(testHeader);
             final Interval<Number> energyCutoutBounds = new Interval<>(1.3606E-3D, 1.3616E-3D);
             final long[] resultBounds = energyCutout.getBounds(energyCutoutBounds);
-            final long[] expectedBounds = new long[]{1L, 18L};
+            final long[] expectedBounds = new long[]{1L, 400L, 1L, 400L, 1L, 18L, 1L, 1L};
 
             assertFuzzyPixelArrayEquals("Wrong energy bounds for ALMA Cube.", expectedBounds, resultBounds);
         }
