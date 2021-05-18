@@ -78,7 +78,9 @@ public enum CADCExt implements IFitsHeader {
 
     CDELT(HDU.IMAGE, VALUE.REAL, "Coord value at incr deg/pixel origin on line axis"),
     CDELTn(HDU.IMAGE, VALUE.REAL, "Coord value at incr deg/pixel origin on line axis"),
+    CHECKSUM(HDU.ANY, VALUE.STRING, "HDU checksum"),
     CUNITn(HDU.IMAGE, VALUE.STRING, "Units for axis"),
+    DATASUM(HDU.ANY, VALUE.STRING, "Data unit checksum"),
     LBOUNDn(HDU.IMAGE, VALUE.INTEGER, "Pixel origin along axis"),
     OBSFREQ(HDU.IMAGE, VALUE.REAL, "Same as RESTFRQ"),
     PC1_1(HDU.IMAGE, VALUE.REAL, ""),

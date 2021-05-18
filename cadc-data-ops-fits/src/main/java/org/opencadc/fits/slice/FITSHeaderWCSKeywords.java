@@ -482,6 +482,10 @@ public class FITSHeaderWCSKeywords implements WCSKeywords {
                 }
             }
         }
+
+        // Remove them each time.
+        destination.deleteKey(CADCExt.CHECKSUM);
+        destination.deleteKey(CADCExt.DATASUM);
     }
 
     /**

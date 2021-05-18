@@ -117,8 +117,9 @@ public class PixelCutout extends FITSCutout<ExtensionSlice> {
                     final int lowBound = pixelRanges.get(i).lowerBound;
                     final int hiBound = pixelRanges.get(i).upperBound;
                     if (lowBound < maxUpperBound) {
-                        final long[] overlap = clip(axisKey, lowBound, Math.min(maxUpperBound, hiBound));
-                        if (overlap != null) {
+                        final long[] clip = clip(axisKey, lowBound, Math.min(maxUpperBound, hiBound));
+                        if (clip != null) {
+                            final long[] overlap = clip.length == 0 ? new long[] {lowBound, hiBound} : clip;
                             final int oldLength = pixelCutoutBounds.length;
                             final int newLength = oldLength + overlap.length;
                             pixelCutoutBounds = Arrays.copyOf(pixelCutoutBounds, newLength);

@@ -143,16 +143,32 @@ public class EnergyCutout extends FITSCutout<Interval<Number>> {
                 LOGGER.warn("No overlap.");
                 return null;
             } else {
-                LOGGER.debug("Overlap is (" + intersectionPixels.getLower() + ", " + intersectionPixels.getUpper()
-                             + ")");
-
                 final double low = intersectionPixels.getLower();
                 final double up = intersectionPixels.getUpper();
-                final long maxLength = this.fitsHeaderWCSKeywords.getIntValue(
-                        Standard.NAXISn.n(energyAxis).key());
+                final long maxSpectralLength =
+                        this.fitsHeaderWCSKeywords.getIntValue(Standard.NAXISn.n(energyAxis).key());
 
-                return clip(maxLength, (long) Math.floor(Math.min(low, up) + 0.5D), (long) Math.ceil(
-                        Math.max(low, up) - 0.5D));
+                final long[] clippedSpectralBounds =
+                        clip(maxSpectralLength, (long) Math.floor(Math.min(low, up) + 0.5D),
+                             (long) Math.ceil(Math.max(low, up) - 0.5D));
+
+                final long[] entireBounds = clippedSpectralBounds == null ? null : new long[naxis * 2];
+
+                if (entireBounds != null) {
+                    for (int i = 0; i < entireBounds.length; i += 2) {
+                        final int axis = (i + 2) / 2;
+                        if (axis == energyAxis) {
+                            entireBounds[i] = clippedSpectralBounds[0];
+                            entireBounds[i + 1] = clippedSpectralBounds[1];
+                        } else {
+                            entireBounds[i] = 1L;
+                            entireBounds[i + 1] = (long) this.fitsHeaderWCSKeywords.getDoubleValue(
+                                    Standard.NAXISn.n(axis).key());
+                        }
+                    }
+                }
+
+                return entireBounds;
             }
         }
     }

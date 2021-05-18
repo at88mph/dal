@@ -332,7 +332,7 @@ public class NDimensionalSlicerTest {
 
             final BasicHDU<?> firstImageHDU = checkFits.getHDU(index++);
             Assert.assertArrayEquals("HDU 1 data dimensions do not match.",
-                                     new int[]{250, 100}, firstImageHDU.getAxes());
+                                     new int[]{100, 250}, firstImageHDU.getAxes());
 
             final BasicHDU<?> secondImageHDU = checkFits.getHDU(index);
             Assert.assertArrayEquals("HDU 2 data dimensions do not match.",
