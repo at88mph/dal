@@ -109,7 +109,8 @@ import org.opencadc.soda.PixelRange;
 import org.opencadc.soda.server.Cutout;
 
 /**
- * Slice out a portion of an image.
+ * Slice out a portion of an image.  This class will support the SODA Shapes and will delegate each cutout to its
+ * appropriate handler (e.g. CircleCutout, EnergyCutout, etc.).
  */
 public class NDimensionalSlicer {
     private static final Logger LOGGER = Logger.getLogger(NDimensionalSlicer.class);
@@ -497,13 +498,10 @@ public class NDimensionalSlicer {
     private void mapOverlap(final Header header, final Cutout cutout, final int hduIndex,
                             final Map<Integer, List<ExtensionSlice>> overlapHDUIndexesSlices)
             throws HeaderCardException, NoSuchKeywordException {
-        final long[] pixelCutoutBounds = WCSCutoutUtil.getBounds(header, cutout);
-        if (pixelCutoutBounds != null) {
+        final PixelRange[] pixelCutoutBounds = WCSCutoutUtil.getBounds(header, cutout);
+        if (pixelCutoutBounds.length > 0) {
             final ExtensionSlice overlapSlice = new ExtensionSlice(hduIndex);
-            for (int i = 0; i < pixelCutoutBounds.length; i += 2) {
-                overlapSlice.getPixelRanges().add(
-                        new PixelRange((int) pixelCutoutBounds[i], (int) pixelCutoutBounds[i + 1]));
-            }
+            overlapSlice.getPixelRanges().addAll(Arrays.asList(pixelCutoutBounds));
 
             final List<ExtensionSlice> overlapSlices = overlapHDUIndexesSlices.containsKey(hduIndex)
                                                        ? overlapHDUIndexesSlices.get(hduIndex)
