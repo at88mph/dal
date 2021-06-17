@@ -77,6 +77,10 @@ import nom.tam.fits.Header;
 import nom.tam.fits.HeaderCardException;
 
 
+/**
+ * Simple spatial range cutout.  This relies on the Polygon cutout after a bounding box is created from the given
+ * Range values.  This class is executed after the inputs are parsed into an appropriate Range object.
+ */
 public class RangeCutout extends ShapeCutout<Range> {
     public RangeCutout(Header header) throws HeaderCardException {
         super(header);
@@ -89,11 +93,10 @@ public class RangeCutout extends ShapeCutout<Range> {
      * @return long[] array of overlapping bounds, or long[0] if all pixels are included.
      * @throws NoSuchKeywordException Unknown keyword found.
      * @throws WCSLibRuntimeException WCSLib (C) error.
-     * @throws HeaderCardException    If a FITS Header card couldn't be read.
      */
     @Override
     public long[] getBounds(final Range cutoutBound)
-            throws NoSuchKeywordException, WCSLibRuntimeException, HeaderCardException {
+            throws NoSuchKeywordException, WCSLibRuntimeException {
         final double x1 = cutoutBound.getLongitude().getLower();
         final double x2 = cutoutBound.getLongitude().getUpper();
         final double y1 = cutoutBound.getLatitude().getLower();
@@ -105,7 +108,7 @@ public class RangeCutout extends ShapeCutout<Range> {
         boundingBox.getVertices().add(new Point(x2, y2));
         boundingBox.getVertices().add(new Point(x1, y2));
 
-        final PolygonCutout polygonCutout = new PolygonCutout(this.fitsHeaderWCSKeywords.getHeader());
+        final PolygonCutout polygonCutout = new PolygonCutout(this.fitsHeaderWCSKeywords);
         return polygonCutout.getBounds(boundingBox);
     }
 }

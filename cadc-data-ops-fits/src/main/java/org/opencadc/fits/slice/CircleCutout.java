@@ -83,6 +83,9 @@ import nom.tam.fits.header.Standard;
 import org.apache.log4j.Logger;
 
 
+/**
+ * A Spatial Circle cutout.  This class is executed after the inputs are parsed into an appropriate Circle shape.
+ */
 public class CircleCutout extends ShapeCutout<Circle> {
     private static final Logger LOGGER = Logger.getLogger(CircleCutout.class);
 
@@ -118,19 +121,12 @@ public class CircleCutout extends ShapeCutout<Circle> {
      * Find the pixel bounds that enclose the specified circle.
      *
      * @param circle circle with center in ICRS coordinates
-     * @return int[4] holding [x1, x2, y1, y2], int[0] if all pixels are included,
+     * @return long[NAXIS], or long[0] if all pixels are included,
      *      or null if the circle does not intersect the WCS
      * @throws NoSuchKeywordException Unknown keyword found.
      * @throws WCSLibRuntimeException WCSLib (C) error.
      */
-    private long[] getPositionBounds(final Circle circle)
-            throws NoSuchKeywordException, WCSLibRuntimeException, HeaderCardException {
-        final Polygon boundingBox = getBoundingBox(circle);
-        final PolygonCutout polygonCutout = new PolygonCutout(this.fitsHeaderWCSKeywords.getHeader());
-        return polygonCutout.getBounds(boundingBox);
-    }
-
-    private Polygon getBoundingBox(final Circle circle) {
+    private long[] getPositionBounds(final Circle circle) throws NoSuchKeywordException, WCSLibRuntimeException {
         final double x = circle.getCenter().getLongitude();
         final double y = circle.getCenter().getLatitude();
         final double radius = circle.getRadius();
@@ -147,7 +143,8 @@ public class CircleCutout extends ShapeCutout<Circle> {
         boundingBox.getVertices().add(rangeReduce(xMax, yMax));
         boundingBox.getVertices().add(rangeReduce(xMin, yMax));
 
-        return boundingBox;
+        final PolygonCutout polygonCutout = new PolygonCutout(this.fitsHeaderWCSKeywords);
+        return polygonCutout.getBounds(boundingBox);
     }
 
     /**
