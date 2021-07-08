@@ -130,7 +130,7 @@ public enum CoordTypeCode {
     // Polarization type codes.
     STOKES("STOKES", "", CoordType.POLARIZATION);
 
-
+    
     private final String typeCodeString;
     private final String defaultUnit;
     private final CoordType coordType;

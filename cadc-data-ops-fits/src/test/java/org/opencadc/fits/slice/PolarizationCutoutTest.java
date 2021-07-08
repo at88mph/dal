@@ -84,7 +84,7 @@ public class PolarizationCutoutTest extends BaseCutoutTest {
     }
 
     @Test
-    public void testStokes() throws Exception {
+    public void testStokesI() throws Exception {
         final Header testHeader = new Header();
 
         testHeader.addValue(Standard.NAXIS, 4);
@@ -117,21 +117,19 @@ public class PolarizationCutoutTest extends BaseCutoutTest {
         testHeader.addValue(CADCExt.CUNITn.n(4), "");
 
         final String[] states = new String[]{
-                PolarizationState.I.name(),
-                PolarizationState.Q.name(),
-                PolarizationState.U.name()
+                PolarizationState.I.name()
         };
 
         final PolarizationCutout testSubject = new PolarizationCutout(testHeader);
 
         final long[] results = testSubject.getBounds(states);
-        final long[] expected = new long[]{1L, 3L};
+        final long[] expected = new long[]{1L, 300L, 1L, 300L, 1L, 151L, 1L, 1L};
 
         assertFuzzyPixelArrayEquals("Wrong output.", expected, results);
     }
 
     @Test
-    public void testCircular() throws Exception {
+    public void testCircularRRLL() throws Exception {
         final Header testHeader = new Header();
 
         testHeader.addValue(Standard.NAXIS, 4);
@@ -164,13 +162,14 @@ public class PolarizationCutoutTest extends BaseCutoutTest {
         testHeader.addValue(CADCExt.CUNITn.n(4), "");
 
         final String[] states = new String[]{
-                PolarizationState.RR.name(), PolarizationState.LL.name()
+                PolarizationState.RR.name(),
+                PolarizationState.LL.name()
         };
 
         final PolarizationCutout testSubject = new PolarizationCutout(testHeader);
 
         final long[] results = testSubject.getBounds(states);
-        final long[] expected = new long[]{3L, 4L};
+        final long[] expected = new long[]{1L, 300L, 1L, 300L, 1L, 151L, 3L, 4L};
 
         assertFuzzyPixelArrayEquals("Wrong output.", expected, results);
     }
@@ -204,22 +203,19 @@ public class PolarizationCutoutTest extends BaseCutoutTest {
 
         testHeader.addValue(Standard.NAXISn.n(4), 1);
         testHeader.addValue(Standard.CTYPEn.n(4), CoordTypeCode.STOKES.name());
-        testHeader.addValue(Standard.CRVALn.n(4), 10.0D);
+        testHeader.addValue(Standard.CRVALn.n(4), 8.0D);
         testHeader.addValue(Standard.CDELTn.n(4), 1.0D);
         testHeader.addValue(Standard.CRPIXn.n(4), 1.0D);
         testHeader.addValue(CADCExt.CUNITn.n(4), "");
 
-        final String[] states = new String[]{
-                PolarizationState.YX.name(),
-                PolarizationState.XY.name(),
-                PolarizationState.YY.name(),
+        final String[] states = new String[] {
                 PolarizationState.XX.name()
         };
 
         final PolarizationCutout testSubject = new PolarizationCutout(testHeader);
 
         final long[] results = testSubject.getBounds(states);
-        final long[] expected = new long[]{3L, 4L};
+        final long[] expected = new long[]{1L, 300L, 1L, 300L, 1L, 151L, 1L, 1L};
 
         assertFuzzyPixelArrayEquals("Wrong output.", expected, results);
     }

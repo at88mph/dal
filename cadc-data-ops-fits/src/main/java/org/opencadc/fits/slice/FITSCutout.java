@@ -76,13 +76,17 @@ import nom.tam.fits.HeaderCardException;
 import org.apache.log4j.Logger;
 
 
+/**
+ * Abstract base class for Cutouts.
+ * @param <T>   The type of input to the cutout.
+ */
 public abstract class FITSCutout<T> {
     private static final Logger LOGGER = Logger.getLogger(FITSCutout.class);
     static final String INPUT_TOO_DISTANT_ERROR_MESSAGE = "One or more of the world coordinates were invalid(9)";
 
     protected final FITSHeaderWCSKeywords fitsHeaderWCSKeywords;
 
-    
+
     public FITSCutout(final Header header) throws HeaderCardException {
         DaliUtil.assertNotNull("header", header);
         postProcess(header);
