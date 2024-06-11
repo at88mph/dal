@@ -235,6 +235,42 @@ public class NDimensionalSlicerTest {
         Files.deleteIfExists(outputPath);
     }
 
+    /**
+     * Two slices from a simple FITS file.
+     */
+    @Test
+    public void testSimpleReverseAxis() throws Exception {
+        ExtensionSliceFormat fmt = new ExtensionSliceFormat();
+        List<ExtensionSlice> slices = new ArrayList<>();
+        slices.add(fmt.parse("[0][375:300]"));
+        final Cutout cutout = new Cutout();
+        cutout.pixelCutouts = slices;
+
+        final NDimensionalSlicer slicer = new NDimensionalSlicer();
+        final File file = FileUtil.getFileFromResource("test-simple-iris.fits",
+                                                       NDimensionalSlicerTest.class);
+        final File expectedFile = FileUtil.getFileFromResource("test-simple-iris-cutout-reverse-axis.fits",
+                                                               NDimensionalSlicerTest.class);
+        final String configuredTestWriteDir = System.getenv("TEST_WRITE_DIR");
+        final String testWriteDir = configuredTestWriteDir == null ? "/tmp" : configuredTestWriteDir;
+        final Path outputPath = Files.createTempFile(new File(testWriteDir).toPath(),
+                                                     "test-simple-iris-cutout-reverse-axis", ".fits");
+
+        LOGGER.debug("Writing to " + outputPath.toAbsolutePath());
+
+        try (final RandomAccessFileIO randomAccessDataObject = new RandomAccessStorageObject(file, "r");
+             final OutputStream outputStream = Files.newOutputStream(outputPath.toFile().toPath())) {
+            slicer.slice(randomAccessDataObject, cutout, outputStream);
+            outputStream.flush();
+        }
+
+        final Fits expectedFits = new Fits(expectedFile);
+        final Fits resultFits = new Fits(outputPath.toFile());
+
+        FitsTest.assertFitsEqual(expectedFits, resultFits);
+//        Files.deleteIfExists(outputPath);
+    }
+
     @Test
     public void testMEFToSimple() throws Exception {
         List<ExtensionSlice> slices = new ArrayList<>();

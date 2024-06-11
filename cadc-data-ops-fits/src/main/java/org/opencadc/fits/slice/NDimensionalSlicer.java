@@ -389,15 +389,19 @@ public class NDimensionalSlicer {
                 setupImageHeader(headerCopy, mefOutput, firstHDUAlreadyWritten, nextEndSize, dimensions);
 
                 final StreamingTileImageData streamingTileImageData;
+
+                // Step values must be absolute values for the nom-tam-fits library.
+                final int[] absoluteSteps = Arrays.stream(steps).map(Math::abs).toArray();
+
                 if (hdu instanceof CompressedImageHDU) {
                     final CompressedImageHDU compressedImageHDU = (CompressedImageHDU) hdu;
                     final CompressedImageTiler compressedImageTiler = new CompressedImageTiler(compressedImageHDU);
                     streamingTileImageData = new StreamingTileImageData(headerCopy, compressedImageTiler, corners,
-                                                                        lengths, steps);
+                                                                        lengths, absoluteSteps);
                 } else {
                     // Assume ImageHDU
                     streamingTileImageData = new StreamingTileImageData(headerCopy, ((ImageHDU) hdu).getTiler(),
-                                                                        corners, lengths, steps);
+                                                                        corners, lengths, absoluteSteps);
                 }
                 fitsOutput.addHDU(new ImageHDU(headerCopy, streamingTileImageData));
             }
@@ -446,21 +450,26 @@ public class NDimensionalSlicer {
             final int rangeUpBound = pixelRange.upperBound;
             final int rangeStep = pixelRange.step;
 
-            final int lowerBound = rangeLowBound > 0 ? rangeLowBound - 1 : rangeLowBound;
-            LOGGER.debug("Set lowerBound to " + lowerBound + " from rangeLowBound " + rangeLowBound);
-            final int upperBound;
             final int step;
+            final int lowerBound;
 
-            if (lowerBound > rangeUpBound) {
-                upperBound = rangeUpBound - 2;
-                step = rangeStep * -1;
+            if (rangeLowBound > 0) {
+                if (rangeLowBound > rangeUpBound) {
+                    lowerBound = rangeLowBound + 1;
+                    step = rangeStep * -1;
+                } else {
+                    lowerBound = rangeLowBound - 1;
+                    step = rangeStep;
+                }
             } else {
-                upperBound = rangeUpBound;
+                lowerBound = rangeLowBound;
                 step = rangeStep;
             }
 
-            final int nextLength = Math.min((upperBound - lowerBound), maxRegionSize);
-            LOGGER.debug("Length is " + nextLength + " (" + upperBound + " - " + lowerBound + "):" + step);
+            LOGGER.debug("Corrected lowerBound to " + lowerBound + " from rangeLowBound " + rangeLowBound);
+
+            final int nextLength = Math.min((rangeUpBound - lowerBound), maxRegionSize);
+            LOGGER.debug("Length is " + nextLength + " (" + rangeUpBound + " - " + lowerBound + "):" + step);
 
             // Adjust the NAXISn header appropriately.  If the step value does not divide perfectly into the length,
             // then there will be an extra write, so add 1 where necessary.
