@@ -1,2 +1,0 @@
-rootProject.name = 'dal'
-include('cadc-datalink', 'cadc-data-ops-fits', 'cadc-soda-server', 'cadc-sia', 'cadc-datalink-server', 'cadc-pkg-server')
